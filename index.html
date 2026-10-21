@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plain Craft Launcher 2 解除下载限制版（第三方修改 · 非官方）</title>
+<meta name="description" content="Plain Craft Launcher 2 第三方修改版，仅供学习研究使用，不进行任何商业获利。非官方版本，与原作者龙腾猫跃及 PCL 官方无关。">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    color: #1f2937;
+  }
+  .container {
+    max-width: 920px;
+    width: 100%;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e40af, #2563eb);
+    padding: 36px 40px;
+    text-align: center;
+  }
+  .badge-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    backdrop-filter: blur(4px);
+  }
+  .badge.warn { background: rgba(245, 158, 11, 0.9); }
+  .header h1 {
+    color: #fff;
+    font-size: 28px;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+  .header .subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14.5px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 36px;
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.45);
+    transition: all 0.3s ease;
+  }
+  .download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6); }
+  .content { display: flex; align-items: stretch; gap: 32px; padding: 36px 40px; flex-wrap: wrap; }
+  .info-card {
+    flex: 1;
+    min-width: 280px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .info-card h2 { color: #1e3a8a; font-size: 18px; margin-bottom: 14px; }
+  .info-card p { color: #475569; font-size: 14.5px; line-height: 1.85; margin-bottom: 10px; }
+  .info-card .hash {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    word-break: break-all;
+    color: #334155;
+    margin-top: 8px;
+  }
+  .info-card .label { font-size: 12px; color: #64748b; font-weight: 600; }
+  .disclaimer {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 10px 10px 0;
+    padding: 16px 18px;
+    margin: 0 40px 32px;
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: #78350f;
+  }
+  .disclaimer strong { color: #92400e; }
+  .footer {
+    border-top: 1px solid #eee;
+    padding: 28px 40px 32px;
+    background: #fafafa;
+  }
+  .footer-links { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .footer-links a {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 8px;
+    font-size: 14px; font-weight: 500; text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .link-github { background: #24292e; color: #fff; }
+  .link-github:hover { background: #3a4149; }
+  .link-sponsor { background: #946ce6; color: #fff; }
+  .link-sponsor:hover { background: #7c5cc7; }
+  .link-official { background: #2563eb; color: #fff; }
+  .link-official:hover { background: #1d4ed8; }
+  .license-note { margin-top: 6px; font-size: 13px; line-height: 1.9; color: #666; }
+  .license-note strong { color: #444; }
+  .license-note a { color: #1976d2; text-decoration: none; border-bottom: 1px dashed #90caf9; }
+  .license-details {
+    margin-top: 16px; border: 1px solid #e0e0e0; border-radius: 10px;
+    background: #fff; overflow: hidden;
+  }
+  .license-details summary {
+    cursor: pointer; list-style: none; padding: 12px 20px;
+    font-size: 14px; font-weight: 600; color: #1976d2; background: #f5f9ff;
+    user-select: none; display: flex; align-items: center; gap: 8px;
+    transition: background 0.2s ease;
+  }
+  .license-details summary::-webkit-details-marker { display: none; }
+  .license-details summary:hover { background: #e8f2ff; }
+  .license-details summary::before { content: "▸"; font-size: 12px; transition: transform 0.2s ease; }
+  .license-details[open] summary::before { transform: rotate(90deg); }
+  .license-body {
+    padding: 24px 28px 28px; font-size: 13px; line-height: 1.9; color: #555;
+    max-height: 480px; overflow-y: auto;
+  }
+  .license-body h3 { font-size: 15px; color: #2c3e50; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+  .license-body h3:first-child { margin-top: 0; }
+  .license-body h4 { font-size: 13.5px; color: #37474f; margin: 14px 0 6px; }
+  .license-body p { margin-bottom: 10px; }
+  .license-body ul, .license-body ol { margin: 0 0 12px 22px; }
+  .license-body li { margin-bottom: 5px; }
+  .license-body .divider { border: none; border-top: 1px dashed #ddd; margin: 20px 0; }
+  .license-body .note-block { background: #fffbf0; border-left: 3px solid #ffb300; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 16px; }
+  @media (max-width: 700px) {
+    .content { flex-direction: column; }
+    .header h1 { font-size: 22px; }
+    .disclaimer { margin: 0 20px 24px; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="badge-row">
+        <span class="badge warn">⚠️ 第三方修改版</span>
+        <span class="badge">非官方</span>
+        <span class="badge">仅供学习研究</span>
+        <span class="badge">不进行任何商业获利</span>
+      </div>
+      <h1>Plain Craft Launcher 2<br>解除下载限制版</h1>
+      <p class="subtitle">
+        基于 PCL2 2.99.0.0 官方正式版的第三方修改，恢复版本下载功能。<br>
+        与原作者龙腾猫跃及 PCL 官方无关，仅用于技术研究与学习交流。
+      </p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+        <a href="./Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0-signed.exe" download="" class="download-btn" style="background: linear-gradient(135deg, rgb(22, 163, 74), rgb(34, 197, 94)); box-shadow: rgba(22, 163, 74, 0.45) 0px 4px 15px;">
+          
+          <span>本地下载（同目录）</span>
+        </a>
+        <a href="https://github.com/Gailv748/Plain-Craft-Launcher-2-Download-Unlock-Third-Party-Mod/releases/download/v2.99.0.0/Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0-signed.exe" class="download-btn" style="">
+          
+          <span>GitHub Release 下载</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="info-card">
+        <h2>关于此版本</h2>
+        <p>PCL2 2.99.0.0 官方版出于合规原因关闭了版本下载功能。本修改版仅在 IL 层做了 <strong>2 处</strong> 最小改动，恢复下载，不新增任何功能：</p>
+        <p>① <code>PageDownloadInstall.LoaderInit</code>：将抛异常的占位加载器替换回官方的 <code>ModDownload.DlClientListLoader</code>。</p>
+        <p>② <code>PageDownloadModify.LoadInstanceFinished</code>：将 <code>CardMinecraft.Visibility</code> 由 <code>Collapsed</code> 恢复为 <code>Visible</code>。</p>
+        <p>补丁器源码完全开源，可自行对比验证。</p>
+      </div>
+      <div class="info-card">
+        <h2>数字签名与校验</h2>
+        <p>Release 中的 exe 已使用<strong>自签名</strong>代码签名证书签名，并附加 DigiCert 时间戳。签名信息：</p>
+        <p><strong>签名者：</strong>PCL2 Third-Party Mod (Non-Official)<br>
+        <strong>程序名称：</strong>PCL2解除下载限制版-第三方修改版｜非官方｜仅供学习研究使用｜不进行任何商业获利</p>
+        <p class="label">SHA256（签名版）</p>
+        <div class="hash">ecc72e0356b74e34665ae5a2ee1b2367b711943e49422fc3500c9672a09100f2</div>
+        <p style="margin-top:12px;font-size:12.5px;color:#64748b;">提示：自签名证书默认不受 Windows 信任，可能提示「未知发布者」，属正常现象。右键文件 → 属性 → 数字签名 可查看完整声明。</p>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>免责声明：</strong>本网站及所分发的软件为<strong>第三方非官方</strong>二次创作产物，与 Plain Craft Launcher 原作者龙腾猫跃、PCL 官方及 Mojang/Microsoft 均无关联。
+      软件仅用于<strong>技术研究与学习交流</strong>，<strong>不进行任何商业获利</strong>，不得用于倒卖或任何违反当地法律法规的行为。
+      使用本软件产生的全部后果由使用者自行承担。请遵守 Minecraft EULA 及当地法律法规。
+    </div>
+
+    <div class="footer">
+      <div class="footer-links">
+        <a href="https://github.com/Gailv748/Plain-Craft-Launcher-2-Download-Unlock-Third-Party-Mod" target="_blank" rel="noopener noreferrer" class="link-github">
+          <span>★</span><span>GitHub 源码仓库</span>
+        </a>
+        <a href="https://meloong.com/afd/a/LTCat" target="_blank" rel="noopener noreferrer" class="link-sponsor">
+          <span>💜</span><span>赞助原作者 龙腾猫跃</span>
+        </a>
+        <a href="https://github.com/Meloong-Git/PCL" target="_blank" rel="noopener noreferrer" class="link-official">
+          <span>📦</span><span>PCL 官方仓库</span>
+        </a>
+      </div>
+
+      <p class="license-note">
+        <strong>原作者署名：</strong>本项目基于 <a href="https://github.com/Meloong-Git/PCL" target="_blank" rel="noopener noreferrer">Plain Craft Launcher 2</a> 修改，原作者为 <strong>龙腾猫跃（LTCat）</strong>，PCL 官网 <a href="https://meloong.com/" target="_blank" rel="noopener noreferrer">meloong.com</a>。
+        如觉得 PCL 好用，请通过 <a href="https://meloong.com/afd/a/LTCat" target="_blank" rel="noopener noreferrer">爱发电</a> 支持原作者。<br>
+        <strong>开源协议：</strong>本项目遵循龙腾猫跃的
+        <a href="https://shimo.im/docs/rGrd8pY8xWkt6ryW#anchor-X0bo" target="_blank" rel="noopener noreferrer">《PCL 分发有限许可》</a>
+        与《PCL 存储库合理使用指南》，名称以 Plain Craft Launcher 开头并标注第三方修改，公开源代码并沿用该指南。
+      </p>
+
+      <details class="license-details">
+        <summary>协议原文（点击展开 / 收起）</summary>
+        <div class="license-body">
+          <h3>《PCL 分发有限许可》</h3>
+          <p>详见 <a href="https://shimo.im/docs/rGrd8pY8xWkt6ryW#anchor-X0bo" target="_blank" rel="noopener noreferrer">https://shimo.im/docs/rGrd8pY8xWkt6ryW#anchor-X0bo</a></p>
+          <hr class="divider">
+          <h3>《PCL 存储库合理使用指南》</h3>
+          <p>本指南仅作为说明，不是法律文件或协议。</p>
+          <p>除《PCL 分发有限许可》明确授予的权利外，开发者保留软件及其相关知识产权中的全部权利。但开发者承诺，在遵守本指南，且善意、合理使用的情况下，不会追究责任。</p>
+          <h4>一、轻度使用</h4>
+          <p>若您仅参考了本存储库中极小部分的内容，或您在制作与 PCL 的实质功能不存在任何重叠的软件，则为轻度使用。</p>
+          <p>其常见情形例如：</p>
+          <ul>
+            <li>使用或参考存储库中极小部分的内容，来开发启动器或其他软件。</li>
+            <li>虽参考了较大量的内容，但制作的软件与 PCL 的实质功能不存在任何重叠。</li>
+          </ul>
+          <p>若属于轻度使用，您需要：</p>
+          <ol>
+            <li>以适当的形式给出署名。</li>
+            <li>不得将您的内容与 PCL 混淆，或暗示您的内容与 PCL 有关。<br>例如：您的内容不得使用 Potato Craft Launcher、PCL 手机版 等会造成混淆或暗示这与 PCL 有关的名称。</li>
+          </ol>
+          <h4>二、重度使用</h4>
+          <p>若不符合轻度使用的情形，即为重度使用。</p>
+          <p>其常见情形例如：</p>
+          <ul>
+            <li>基于本存储库进行修改。</li>
+            <li>参考存储库中较大量的内容，以制作或重新实现 PCL 的部分实质功能（例如启动或下载 Java 版 Minecraft，下载或管理 Mod 等）。</li>
+          </ul>
+          <p>若属于重度使用，您需要：</p>
+          <ol>
+            <li>明确表示您的内容是第三方基于 PCL 独立进行二次创作的产物。</li>
+            <li>您的内容的名称必须以 Plain Craft Launcher (PCL) 开头，并在其后添加足以表现其由第三方修改的后缀。<br>允许的示例：PCL 某服务器魔改版、PCL PR Collection、PCL (XX Bug Fix)、PCL XXX修改版。<br>禁止的示例：PCL 某服务器特供版（暗示由官方提供）、PCL 3、PCL 手机版、PCL++、PCL Pro（这像是官方的后续作品）。</li>
+            <li>在关于页面的首位给出龙腾猫跃的署名及对应的赞助链接，公开源代码，且继续使用本文件作为指南（可参考 CC BY-SA 协议）。</li>
+            <li>软件若有 Minecraft 启动功能，则应实现与 McLaunchPrecheck 函数一致（或更激进）的 Minecraft 正版购买劝导与赞助劝导。</li>
+            <li>软件在 Windows 系统上运行时，不应有与 PCL 的赞助解锁功能类似的功能或表现。<br>例如：界面的主要色相必须为蓝色（即使没有修改功能，改为其他色相也和需要赞助解锁的主题功能类似）。</li>
+          </ol>
+          <hr class="divider">
+          <h3>说人话的备注</h3>
+          <div class="note-block">
+            <p>这些规则主要是为了阻止恶意的使用、倒卖和 "山寨版" 的出现，常规、善意的使用都没啥问题的，放心吧！</p>
+            <p>如果你只是参考了一小段代码，署个名就行啦，不用担心。</p>
+            <p>如果对具体细节有疑问，或是希望修改这些规则，欢迎在 <a href="https://github.com/Meloong-Git/PCL/discussions/new?category=%E6%8F%90%E9%97%AE" target="_blank" rel="noopener noreferrer">https://github.com/Meloong-Git/PCL/discussions/new?category=%E6%8F%90%E9%97%AE</a> 发帖！</p>
+            <p>多谢大家啦！</p>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+
+
+</body></html>
