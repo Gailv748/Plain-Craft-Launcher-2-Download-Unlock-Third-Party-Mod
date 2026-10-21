@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
@@ -22,6 +23,8 @@ internal static class Program
 
         PatchDownloadPage(module);
         PatchModifyPage(module);
+        PatchModpackDispatcher(module);
+        PatchModpackManualInstall(module);
 
         var opts = new ModuleWriterOptions(module);
         opts.Logger = DummyLogger.NoThrowInstance;
@@ -30,9 +33,8 @@ internal static class Program
         return 0;
     }
 
-    // PageDownloadInstall.LoaderInit():
-    //   PageLoaderInit(..., New LoaderTask(Of String, DlClientListResult)("关闭下载", Sub() Throw ...), ...)
-    // -> PageLoaderInit(..., DlClientListLoader, ...)
+    // 1. 恢复版本清单加载：PageDownloadInstall.LoaderInit
+    //    将"关闭下载"占位加载器替换为官方的 DlClientListLoader
     private static void PatchDownloadPage(ModuleDefMD module)
     {
         var page = module.Find("PCL.PageDownloadInstall", false)
@@ -79,8 +81,8 @@ internal static class Program
         Console.WriteLine($"Patched PageDownloadInstall.LoaderInit (removed {end - start + 1} instructions)");
     }
 
-    // PageDownloadModify.LoadInstanceFinished():
-    //   CardMinecraft.Visibility = Collapsed -> Visible
+    // 2. 恢复版本卡片：PageDownloadModify.LoadInstanceFinished
+    //    CardMinecraft.Visibility = Collapsed -> Visible
     private static void PatchModifyPage(ModuleDefMD module)
     {
         var page = module.Find("PCL.PageDownloadModify", false)
@@ -107,5 +109,267 @@ internal static class Program
 
         method.Body.UpdateInstructionOffsets();
         Console.WriteLine("Patched PageDownloadModify.LoadInstanceFinished (CardMinecraft -> Visible)");
+    }
+
+    // 5. 恢复整合包分派：ModpackInstall(string File, string InstanceName, string Logo)
+    //    将 throw "为遵守..." 替换为 Select Case PackType 分派到各 InstallPack* 方法
+    private static void PatchModpackDispatcher(ModuleDefMD module)
+    {
+        var modModpack = module.Find("PCL.ModModpack", false)
+                         ?? throw new InvalidOperationException("ModModpack not found");
+        var method = modModpack.Methods.FirstOrDefault(m =>
+            m.Name == "ModpackInstall" && m.Parameters.Count == 3)
+            ?? throw new InvalidOperationException("ModpackInstall(File,...) not found");
+
+        var body = method.Body;
+        var ins = body.Instructions;
+
+        // 找到 throw "为遵守相关法律法规..." 的位置
+        int throwStart = -1;
+        for (int i = 0; i < ins.Count; i++)
+        {
+            if (ins[i].OpCode == OpCodes.Ldstr &&
+                ins[i].Operand is string s &&
+                s.StartsWith("为遵守相关法律法规"))
+            {
+                // 确保后面跟着 newobj Exception::.ctor(string) 和 throw
+                if (i + 2 < ins.Count &&
+                    ins[i + 1].OpCode == OpCodes.Newobj &&
+                    ins[i + 2].OpCode == OpCodes.Throw)
+                {
+                    throwStart = i;
+                    break;
+                }
+            }
+        }
+        if (throwStart < 0) throw new InvalidOperationException("modpack restriction throw not found");
+
+        // PackType 是 local[4] (int)
+        var packTypeLocal = body.Variables[4];
+
+        // 将所有指向被删除 throw 的分支（leave）重定向到新 switch 的首条指令
+        var throwInstr = ins[throwStart];
+        var switchStart = Instruction.Create(OpCodes.Ldloc_S, packTypeLocal);
+        foreach (var h in body.ExceptionHandlers)
+        {
+            if (h.HandlerEnd == throwInstr) h.HandlerEnd = switchStart;
+        }
+        foreach (var instr in ins)
+        {
+            if (instr.Operand == throwInstr)
+                instr.Operand = switchStart;
+        }
+
+        // 移除 ldstr / newobj / throw 三条指令
+        ins.RemoveAt(throwStart + 2);
+        ins.RemoveAt(throwStart + 1);
+        ins.RemoveAt(throwStart);
+
+        // 获取 InstallPack* 方法
+        var packMethods = new Dictionary<int, IMethod>();
+        foreach (var m in modModpack.Methods)
+        {
+            switch (m.Name)
+            {
+                case "InstallPackCurseForge": packMethods[0] = m; break;
+                case "InstallPackHMCL": packMethods[1] = m; break;
+                case "InstallPackMMC": packMethods[2] = m; break;
+                case "InstallPackMCBBS": packMethods[3] = m; break;
+                case "InstallPackModrinth": packMethods[4] = m; break;
+                case "InstallPackLauncherPack": packMethods[9] = m; break;
+                case "InstallPackCompress": /* default case */ break;
+            }
+        }
+        var compress = modModpack.Methods.First(m => m.Name == "InstallPackCompress");
+        foreach (var kv in new[] { 0, 1, 2, 3, 4, 9 })
+            if (!packMethods.ContainsKey(kv))
+                throw new InvalidOperationException($"InstallPack for type {kv} not found");
+
+        // 构建 switch 目标
+        var case0 = Instruction.Create(OpCodes.Ldarg_0);
+        var case1 = Instruction.Create(OpCodes.Ldarg_0);
+        var case2 = Instruction.Create(OpCodes.Ldarg_0);
+        var case3 = Instruction.Create(OpCodes.Ldarg_0);
+        var case4 = Instruction.Create(OpCodes.Ldarg_0);
+        var case9 = Instruction.Create(OpCodes.Ldarg_0);
+        var caseElse = Instruction.Create(OpCodes.Ldarg_0);
+
+        // switch 目标表：索引 0-9，5/6/7/8 落到 else
+        var switchTargets = new[] { case0, case1, case2, case3, case4, caseElse, caseElse, caseElse, caseElse, case9 };
+
+        var newIns = new List<Instruction>
+        {
+            switchStart,
+            Instruction.Create(OpCodes.Switch, switchTargets),
+            // default (else) -> InstallPackCompress(File, Archive)
+            caseElse,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Call, compress),
+            Instruction.Create(OpCodes.Ret),
+            // case 0 -> InstallPackCurseForge(File, Archive, ArchiveBaseFolder, InstanceName, Logo)
+            case0,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Ldarg_1),
+            Instruction.Create(OpCodes.Ldarg_2),
+            Instruction.Create(OpCodes.Call, packMethods[0]),
+            Instruction.Create(OpCodes.Ret),
+            // case 1 -> InstallPackHMCL(File, Archive, ArchiveBaseFolder)
+            case1,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Call, packMethods[1]),
+            Instruction.Create(OpCodes.Ret),
+            // case 2 -> InstallPackMMC(File, Archive, ArchiveBaseFolder)
+            case2,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Call, packMethods[2]),
+            Instruction.Create(OpCodes.Ret),
+            // case 3 -> InstallPackMCBBS(File, Archive, ArchiveBaseFolder, InstanceName)
+            case3,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Ldarg_1),
+            Instruction.Create(OpCodes.Call, packMethods[3]),
+            Instruction.Create(OpCodes.Ret),
+            // case 4 -> InstallPackModrinth(File, Archive, ArchiveBaseFolder, InstanceName, Logo)
+            case4,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Ldarg_1),
+            Instruction.Create(OpCodes.Ldarg_2),
+            Instruction.Create(OpCodes.Call, packMethods[4]),
+            Instruction.Create(OpCodes.Ret),
+            // case 9 -> InstallPackLauncherPack(File, Archive, ArchiveBaseFolder)
+            case9,
+            Instruction.Create(OpCodes.Ldloc_1),
+            Instruction.Create(OpCodes.Ldloc_2),
+            Instruction.Create(OpCodes.Call, packMethods[9]),
+            Instruction.Create(OpCodes.Ret),
+        };
+
+        for (int i = 0; i < newIns.Count; i++)
+            ins.Insert(throwStart + i, newIns[i]);
+        body.OptimizeBranches();
+        body.SimplifyBranches();
+        body.UpdateInstructionOffsets();
+
+        Console.WriteLine("Patched ModModpack.ModpackInstall(File,...) (restored dispatcher switch)");
+    }
+
+    // 4. 恢复手动安装整合包入口：ModpackInstall()
+    //    将仅显示 Hint 的主体替换为：弹出文件选择框 -> 调用 ModpackInstall(File)
+    private static void PatchModpackManualInstall(ModuleDefMD module)
+    {
+        var modModpack = module.Find("PCL.ModModpack", false)
+                         ?? throw new InvalidOperationException("ModModpack not found");
+        var method = modModpack.Methods.FirstOrDefault(m =>
+            m.Name == "ModpackInstall" && m.Parameters.Count == 0)
+            ?? throw new InvalidOperationException("ModpackInstall() not found");
+
+        var body = method.Body;
+        var ins = body.Instructions;
+
+        // 清空原有指令
+        ins.Clear();
+
+        // 获取所需方法引用
+        var selectFile = module.GetMemberRefs().First(mr =>
+            mr.Name == "SelectFile" && mr.DeclaringType?.FullName == "MeloongCore.Wpf.Dialogs");
+
+        // OneOf<,> 的 op_Implicit(IEnumerable<(string[],string)>) —— 匹配参数为 IEnumerable 的重载
+        var oneOfImplicit = module.GetMemberRefs().First(mr =>
+            mr.Name == "op_Implicit" &&
+            mr.FullName.Contains("OneOf`2<System.Collections.Generic.IEnumerable`1<System.ValueTuple`2<System.String[],System.String>>,System.String>::op_Implicit(System.Collections.Generic.IEnumerable"));
+
+        // Nullable<OneOf<,>>::.ctor(OneOf<,>)
+        var nullableCtor = module.GetMemberRefs().First(mr =>
+            mr.Name == ".ctor" && mr.FullName.Contains("Nullable") && mr.FullName.Contains("OneOf"));
+
+        var firstOrDefault = module.GetMemberRefs().First(mr =>
+            mr.Name == "FirstOrDefault" && mr.DeclaringType?.FullName == "System.Linq.Enumerable" &&
+            mr.FullName.Contains("IEnumerable") && !mr.FullName.Contains("Func"));
+
+        var isNullOrEmpty = module.GetMemberRefs().First(mr =>
+            mr.Name == "IsNullOrEmpty" && mr.DeclaringType?.FullName == "System.String");
+
+        var modpackInstallFile = modModpack.Methods.First(m =>
+            m.Name == "ModpackInstall" && m.Parameters.Count == 3);
+
+        // ValueTuple<string[], string> 的构造（从现有指令中复用类型引用）
+        ITypeDefOrRef tupleType = null;
+        foreach (var t in module.GetTypes())
+        {
+            foreach (var mm in t.Methods.Where(x => x.Body != null))
+            {
+                foreach (var instr in mm.Body.Instructions)
+                {
+                    if (instr.OpCode == OpCodes.Stelem && instr.Operand is IType tr &&
+                        tr.FullName == "System.ValueTuple`2<System.String[],System.String>")
+                    {
+                        tupleType = tr as ITypeDefOrRef;
+                        break;
+                    }
+                }
+                if (tupleType != null) break;
+            }
+            if (tupleType != null) break;
+        }
+        if (tupleType == null) throw new InvalidOperationException("ValueTuple<String[],String> type not found");
+
+        var tupleCtor = module.GetMemberRefs().First(mr =>
+            mr.Name == ".ctor" &&
+            mr.FullName.StartsWith("System.Void System.ValueTuple`2<System.String[],System.String>::.ctor"));
+
+        var ret = Instruction.Create(OpCodes.Ret);
+
+        // 先 push title / false / null，再构造 filter（SelectFile 参数顺序）
+        ins.Clear();
+        ins.Add(Instruction.Create(OpCodes.Ldstr, "选择整合包压缩文件"));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_0));
+        ins.Add(Instruction.Create(OpCodes.Ldnull));
+        // 构造 filter
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_1));
+        ins.Add(Instruction.Create(OpCodes.Newarr, tupleType));
+        ins.Add(Instruction.Create(OpCodes.Dup));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_0));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_3));
+        ins.Add(Instruction.Create(OpCodes.Newarr, module.CorLibTypes.String.ToTypeDefOrRef()));
+        ins.Add(Instruction.Create(OpCodes.Dup));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_0));
+        ins.Add(Instruction.Create(OpCodes.Ldstr, "rar"));
+        ins.Add(Instruction.Create(OpCodes.Stelem_Ref));
+        ins.Add(Instruction.Create(OpCodes.Dup));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_1));
+        ins.Add(Instruction.Create(OpCodes.Ldstr, "zip"));
+        ins.Add(Instruction.Create(OpCodes.Stelem_Ref));
+        ins.Add(Instruction.Create(OpCodes.Dup));
+        ins.Add(Instruction.Create(OpCodes.Ldc_I4_2));
+        ins.Add(Instruction.Create(OpCodes.Ldstr, "mrpack"));
+        ins.Add(Instruction.Create(OpCodes.Stelem_Ref));
+        ins.Add(Instruction.Create(OpCodes.Ldstr, "整合包文件"));
+        ins.Add(Instruction.Create(OpCodes.Newobj, tupleCtor));
+        ins.Add(Instruction.Create(OpCodes.Stelem, tupleType));
+        ins.Add(Instruction.Create(OpCodes.Call, oneOfImplicit));
+        ins.Add(Instruction.Create(OpCodes.Newobj, nullableCtor));
+        // 调用 SelectFile -> List<string>
+        ins.Add(Instruction.Create(OpCodes.Call, selectFile));
+        // FirstOrDefault -> string
+        ins.Add(Instruction.Create(OpCodes.Call, firstOrDefault));
+        // 检查是否为空
+        ins.Add(Instruction.Create(OpCodes.Dup));
+        ins.Add(Instruction.Create(OpCodes.Call, isNullOrEmpty));
+        ins.Add(Instruction.Create(OpCodes.Brtrue_S, ret));
+        // 调用 ModpackInstall(File)
+        ins.Add(Instruction.Create(OpCodes.Call, modpackInstallFile));
+        ins.Add(Instruction.Create(OpCodes.Pop));
+        ins.Add(ret);
+
+        body.OptimizeBranches();
+        body.SimplifyBranches();
+        body.UpdateInstructionOffsets();
+
+        Console.WriteLine("Patched ModModpack.ModpackInstall() (restored manual install entry)");
     }
 }

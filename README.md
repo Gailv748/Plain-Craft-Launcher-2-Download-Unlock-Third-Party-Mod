@@ -22,22 +22,17 @@
 
 ## 这个版本做了什么
 
-PCL2 `2.99.0.0` 正式版出于合规原因，把版本下载入口替换成了一个直接抛出异常的占位加载器：
+PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownload = True` 关闭了多项下载与整合包功能。本项目使用 [dnlib](https://github.com/0xd4d/dnlib) 在 IL 层做**四处**最小修改，恢复以下五项功能，不改界面、不新增功能、不引入任何新代码：
 
-```vb
-PageLoaderInit(..., New LoaderTask(Of String, DlClientListResult)("关闭下载", Sub()
-    Throw New Exception("为遵守相关法律法规，PCL 暂时不再提供 MC 下载功能，非常抱歉 qwq……")
-End Sub), ...)
-```
+| # | 功能 | 修改点 | 说明 |
+| - | ---- | ------ | ---- |
+| 1 | 恢复版本清单加载 | `PCL.PageDownloadInstall.LoaderInit` | 把抛异常的占位加载器替换回官方 `ModDownload.DlClientListLoader` |
+| 2 | 恢复版本卡片 | `PCL.PageDownloadModify.LoadInstanceFinished` | 把 `CardMinecraft.Visibility` 从 `Collapsed` 恢复为 `Visible` |
+| 3 | 恢复整合包安装安静 | `PCL.FormMain` 拖放处理 | 恢复后整合包安装异常由原有 catch 安静处理（无需额外补丁） |
+| 4 | 恢复手动安装整合包入口 | `PCL.ModModpack.ModpackInstall()` | 恢复文件选择框 → 调用 `ModpackInstall(File)` |
+| 5 | 恢复整合包分派 | `PCL.ModModpack.ModpackInstall(File,…)` | 恢复 `Select Case PackType` 分派到 `InstallPackCurseForge/HMCL/MMC/MCBBS/Modrinth/LauncherPack/Compress` |
 
-本项目使用 [dnlib](https://github.com/0xd4d/dnlib) 在 IL 层做**两处**最小修改，不改界面、不新增功能、不引入任何新代码：
-
-1. `PCL.PageDownloadInstall.LoaderInit`
-   把上述占位加载器替换为程序内本来就存在的官方加载器 `ModDownload.DlClientListLoader`，恢复版本列表加载。
-2. `PCL.PageDownloadModify.LoadInstanceFinished`
-   把 `CardMinecraft.Visibility` 从 `Collapsed` 恢复为 `Visible`，让版本修改页正常显示原版组件卡片。
-
-补丁器源码完全公开：[`patcher/Program.cs`](patcher/Program.cs)。它不做字符串注入、不下载任何远程代码、不修改其他方法。
+补丁器源码完全公开：[`patcher/Program.cs`](patcher/Program.cs)。它不做字符串注入、不下载任何远程代码、不修改其他方法。所有被调用的方法（`DlClientListLoader`、`InstallPack*` 等）均为原版程序中已存在的代码。
 
 ## 下载与使用
 
@@ -68,8 +63,7 @@ Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode �
 
 | 文件              | 大小           | MD5                                | SHA256                                                             |
 | --------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------ |
-| 签名版（Release 资产） | 5,980,192 字节 | `49b14bf84b7270d3c28897018e333ac4` | `ecc72e0356b74e34665ae5a2ee1b2367b711943e49422fc3500c9672a09100f2` |
-| 未签名修改版 | 5,972,480 字节 | `b4478b66dde895b07c4ccc9722293bc3` | `e400c46dd2a88e7ccf7b142d38f94691467cb9127bc7c6ecbf83d9ee35a611bb` |
+| 签名版（Release 资产） | 5,980,704 字节 | `—` | `60fcee84d2dfd289a08909b94e1ba78e55abc79bc32c15c57ed34ef9c41e0627` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
 请只从本仓库 Releases 下载，并核对 SHA256。
@@ -89,8 +83,8 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 ## 安全性说明
 
 - 修改后的文件**未签名**，部分杀毒软件可能因“未知/被修改”给出启发式告警，这属于信誉问题，不等于检出病毒；如出现具体报毒名，欢迎提 Issue 附上名称。
-- 补丁只改变上述两个方法的 IL 指令，未新增程序集引用、未新增资源、未添加网络请求。
-- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上面两处。
+- 补丁只改变上述四个方法的 IL 指令，未新增程序集引用、未新增资源、未添加网络请求。
+- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上述四处。
 - 本仓库不包含 PCL2 的完整源代码；PCL2 源代码请前往[原仓库](https://github.com/Meloong-Git/PCL)获取。
 
 ## 许可
@@ -101,6 +95,6 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 ## English summary
 
-An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download feature. It applies exactly two IL patches with dnlib — replacing a stub loader that throws an exception with the launcher's existing `ModDownload.DlClientListLoader`, and restoring the `CardMinecraft` card's visibility. No new code, resources, or network endpoints are introduced.
+An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies four minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher. All called methods (`DlClientListLoader`, `InstallPack*`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced.
 
 Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from the Releases page and verify its SHA256.

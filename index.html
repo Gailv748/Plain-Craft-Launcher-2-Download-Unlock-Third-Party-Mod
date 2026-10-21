@@ -191,9 +191,12 @@
     <div class="content">
       <div class="info-card">
         <h2>关于此版本</h2>
-        <p>PCL2 2.99.0.0 官方版出于合规原因关闭了版本下载功能。本修改版仅在 IL 层做了 <strong>2 处</strong> 最小改动，恢复下载，不新增任何功能：</p>
-        <p>① <code>PageDownloadInstall.LoaderInit</code>：将抛异常的占位加载器替换回官方的 <code>ModDownload.DlClientListLoader</code>。</p>
-        <p>② <code>PageDownloadModify.LoadInstanceFinished</code>：将 <code>CardMinecraft.Visibility</code> 由 <code>Collapsed</code> 恢复为 <code>Visible</code>。</p>
+        <p>PCL2 2.99.0.0 官方版出于合规原因关闭了版本下载与整合包功能。本修改版仅在 IL 层做了 <strong>4 处</strong> 最小改动，恢复以下 <strong>5 项</strong> 功能，不新增任何代码：</p>
+        <p>① 恢复版本清单加载：<code>LoaderInit</code> 换回官方 <code>DlClientListLoader</code>。</p>
+        <p>② 恢复版本卡片：<code>CardMinecraft.Visibility</code> 恢复为 <code>Visible</code>。</p>
+        <p>③ 恢复整合包安装安静：拖放安装异常由原有 catch 安静处理。</p>
+        <p>④ 恢复手动安装整合包入口：<code>ModpackInstall()</code> 恢复文件选择框。</p>
+        <p>⑤ 恢复整合包分派：<code>ModpackInstall(File)</code> 恢复 <code>Select Case</code> 分派到各 <code>InstallPack*</code>。</p>
         <p>补丁器源码完全开源，可自行对比验证。</p>
       </div>
       <div class="info-card">
@@ -202,7 +205,7 @@
         <p><strong>签名者：</strong>PCL2 Third-Party Mod (Non-Official)<br>
         <strong>程序名称：</strong>PCL2解除下载限制版-第三方修改版｜非官方｜仅供学习研究使用｜不进行任何商业获利</p>
         <p class="label">SHA256（签名版）</p>
-        <div class="hash">ecc72e0356b74e34665ae5a2ee1b2367b711943e49422fc3500c9672a09100f2</div>
+        <div class="hash">60fcee84d2dfd289a08909b94e1ba78e55abc79bc32c15c57ed34ef9c41e0627</div>
         <p style="margin-top:12px;font-size:12.5px;color:#64748b;">提示：自签名证书默认不受 Windows 信任，可能提示「未知发布者」，属正常现象。右键文件 → 属性 → 数字签名 可查看完整声明。</p>
       </div>
     </div>
