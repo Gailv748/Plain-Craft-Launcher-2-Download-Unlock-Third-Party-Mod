@@ -41,18 +41,35 @@ End Sub), ...)
 
 ## 下载与使用
 
-1. 可访问 **项目官网** <https://newpcl2.netlify.app>，或本仓库的 **Releases** 页面，下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0.exe`。
+1. 可访问 **项目官网** <https://newpcl2.netlify.app>，或本仓库的 **Releases** 页面，下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0-signed.exe`。
 2. **先备份**你原来的 `Plain Craft Launcher 2.exe`。
 3. 用下载的文件替换原文件（或单独放在一个目录运行）。
 4. 运行需要 Windows 与 .NET Framework 4.8。
 
 > 仅支持 PCL2 **2.99.0.0**。其他版本的方法结构可能不同，补丁器会直接报错而不会写出损坏文件。
 
+### 数字签名说明（重要）
+
+Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode 签名，并附加了 DigiCert 时间戳。签名信息如下：
+
+| 字段 | 值 |
+| --- | --- |
+| 签名者（Publisher） | `PCL2 Third-Party Mod (Non-Official)` |
+| 组织 | `Third-Party Modification` |
+| 组织单位 | `Learning-Only No-Profit` |
+| 程序名称 | `PCL2解除下载限制版-第三方修改版｜非官方｜仅供学习研究使用｜不进行任何商业获利` |
+| 更多信息 | <https://newpcl2.netlify.app> |
+| 时间戳 | DigiCert Trusted G4 TimeStamping |
+| 有效期 | 2026-10-21 至 2036-10-18 |
+
+> **关于「未知发布者」提示**：由于这是**自签名证书**（非 CA 机构签发），Windows 默认不受信任，可能仍提示「未知发布者」。这并不代表文件有问题——右键文件 → 属性 → 数字签名 即可看到完整签名信息，包括上面的「非官方 / 仅供学习研究 / 不得牟利」声明。如需消除提示，可将随附的自签名根证书导入「受信任的根证书颁发机构」（仅供个人学习研究使用）。
+
 ### 文件校验
 
 | 文件              | 大小           | MD5                                | SHA256                                                             |
 | --------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------ |
-| 修改后（Release 资产） | 5,972,480 字节 | `b4478b66dde895b07c4ccc9722293bc3` | `e400c46dd2a88e7ccf7b142d38f94691467cb9127bc7c6ecbf83d9ee35a611bb` |
+| 签名版（Release 资产） | 5,980,192 字节 | `49b14bf84b7270d3c28897018e333ac4` | `ecc72e0356b74e34665ae5a2ee1b2367b711943e49422fc3500c9672a09100f2` |
+| 未签名修改版 | 5,972,480 字节 | `b4478b66dde895b07c4ccc9722293bc3` | `e400c46dd2a88e7ccf7b142d38f94691467cb9127bc7c6ecbf83d9ee35a611bb` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
 请只从本仓库 Releases 下载，并核对 SHA256。
