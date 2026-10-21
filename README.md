@@ -1,5 +1,7 @@
 # Plain Craft Launcher 2 解除下载限制版（第三方修改）
 
+> 🌐 **项目官网**：<https://newpcl2.netlify.app>
+
 > **非官方版本声明**
 >
 > 本项目是第三方基于 [Plain Craft Launcher 2 (PCL2)](https://github.com/Meloong-Git/PCL) **2.99.0.0 官方正式版**独立进行二次创作的产物，**与原作者龙腾猫跃及 PCL 官方没有任何关系**，也不代表官方立场。
@@ -8,13 +10,13 @@
 
 ## 原作者与赞助
 
-| 项目 | 链接 |
-| --- | --- |
-| 原作者 | 龙腾猫跃（LTCat） |
-| PCL 官方网站 | https://meloong.com/ |
-| 赞助原作者（爱发电） | https://meloong.com/afd/a/LTCat |
-| PCL 原仓库 | https://github.com/Meloong-Git/PCL |
-| PCL 帮助文档 | https://github.com/LTCatt/PCL2Help |
+| 项目         | 链接                                   |
+| ---------- | ------------------------------------ |
+| 原作者        | 龙腾猫跃（LTCat）                          |
+| PCL 官方网站   | [pcl.](https://meloong.com/)         |
+| 赞助原作者（爱发电） | <https://meloong.com/afd/a/LTCat>    |
+| PCL 原仓库    | <https://github.com/Meloong-Git/PCL> |
+| PCL 帮助文档   | <https://github.com/LTCatt/PCL2Help> |
 
 如果你觉得 PCL 好用，请通过上面的赞助链接支持原作者。
 
@@ -39,7 +41,7 @@ End Sub), ...)
 
 ## 下载与使用
 
-1. 前往本仓库的 **Releases** 页面，下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0.exe`。
+1. 可访问 **项目官网** <https://newpcl2.netlify.app>，或本仓库的 **Releases** 页面，下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0.exe`。
 2. **先备份**你原来的 `Plain Craft Launcher 2.exe`。
 3. 用下载的文件替换原文件（或单独放在一个目录运行）。
 4. 运行需要 Windows 与 .NET Framework 4.8。
@@ -48,8 +50,8 @@ End Sub), ...)
 
 ### 文件校验
 
-| 文件 | 大小 | MD5 | SHA256 |
-| --- | --- | --- | --- |
+| 文件              | 大小           | MD5                                | SHA256                                                             |
+| --------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------ |
 | 修改后（Release 资产） | 5,972,480 字节 | `b4478b66dde895b07c4ccc9722293bc3` | `e400c46dd2a88e7ccf7b142d38f94691467cb9127bc7c6ecbf83d9ee35a611bb` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
@@ -78,7 +80,7 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 本项目遵循 PCL 的《分发有限许可》与《存储库合理使用指南》，全文见 [`LICENCE`](LICENCE)。本项目名称以 `Plain Craft Launcher` 开头并带有“第三方修改”标识，属于第三方二次创作，不代表官方。
 
----
+***
 
 ## English summary
 
