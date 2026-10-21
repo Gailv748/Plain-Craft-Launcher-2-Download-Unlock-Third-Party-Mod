@@ -36,7 +36,14 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 
 ## 下载与使用
 
-1. 可访问 **项目官网** <https://newpcl2.netlify.app>，或本仓库的 **Releases** 页面，下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0-signed.exe`。
+1. 通过以下任一渠道下载 `Plain-Craft-Launcher-2-Download-Unlock-v2.99.0.0-signed.exe`：
+
+   | 渠道 | 链接 | 说明 |
+   | --- | --- | --- |
+   | **蓝奏云（推荐）** | <https://www.ilanzou.com/s/ylgyZYzi9> | 国内访问快，无需登录 |
+   | 项目官网 | <https://newpcl2.netlify.app> | 同目录直链 + GitHub 镜像 |
+   | GitHub Releases | [Releases 页面](https://github.com/Gailv748/Plain-Craft-Launcher-2-Download-Unlock-Third-Party-Mod/releases) | 需能访问 GitHub |
+
 2. **先备份**你原来的 `Plain Craft Launcher 2.exe`。
 3. 用下载的文件替换原文件（或单独放在一个目录运行）。
 4. 运行需要 Windows 与 .NET Framework 4.8。
@@ -66,7 +73,7 @@ Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode �
 | 签名版（Release 资产） | 5,980,704 字节 | `—` | `60fcee84d2dfd289a08909b94e1ba78e55abc79bc32c15c57ed34ef9c41e0627` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
-请只从本仓库 Releases 下载，并核对 SHA256。
+请只从上述官方渠道（蓝奏云 / 项目官网 / 本仓库 Releases）下载，并核对 SHA256。
 
 ## 自行构建补丁
 
@@ -97,4 +104,4 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies four minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher. All called methods (`DlClientListLoader`, `InstallPack*`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced.
 
-Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from the Releases page and verify its SHA256.
+Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from [Lanzou Cloud (recommended)](https://www.ilanzou.com/s/ylgyZYzi9), the project website, or the Releases page, and verify its SHA256.
