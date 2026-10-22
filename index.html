@@ -4,6 +4,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plain Craft Launcher 2 解除下载限制版（第三方修改 · 非官方）</title>
 <meta name="description" content="Plain Craft Launcher 2 第三方修改版，仅供学习研究使用，不进行任何商业获利。非官方版本，与原作者龙腾猫跃及 PCL 官方无关。">
+<script>
+/* ===== 第三方修改版强制公告：每次加载都会显示，删除 / 隐藏 / 篡改后自动重建 ===== */
+(function () {
+  'use strict';
+
+  var SIG = 'np-notice-v1';
+  var HOST_ID = 'nonprofit-notice';
+  var KEY_USAGE = '仅用于学习交流';
+  var KEY_PROFIT = '不得以任何方式用于牟利';
+  var dismissed = false;
+
+  var STYLE = [
+    ':host{all:initial;}',
+    '*{box-sizing:border-box;}',
+    '.npw-mask{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}',
+    '.npw-card{width:100%;max-width:520px;max-height:86vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);animation:npwIn .25s ease-out;}',
+    '@keyframes npwIn{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}',
+    '.npw-head{padding:24px 26px 16px;border-bottom:1px solid #e2e8f0;}',
+    '.npw-tag{display:inline-block;padding:4px 12px;border-radius:20px;background:#fff7ed;color:#c2410c;font-size:12px;font-weight:700;letter-spacing:.5px;margin-bottom:10px;}',
+    '.npw-head h2{font-size:20px;line-height:1.4;color:#1e3a8a;margin:0;}',
+    '.npw-body{padding:18px 26px 8px;color:#475569;font-size:14px;line-height:1.85;}',
+    '.npw-body p{margin:0 0 12px;}',
+    '.npw-body b{color:#1f2937;}',
+    '.npw-warn{margin:0 0 12px;padding:10px 12px;border-left:3px solid #ea580c;background:#fff7ed;border-radius:0 8px 8px 0;color:#9a3412;font-weight:600;}',
+    '.npw-foot{padding:14px 26px 24px;display:flex;flex-direction:column;gap:10px;}',
+    '.npw-ok{width:100%;border:none;border-radius:10px;padding:13px 18px;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}',
+    '.npw-ok:hover{filter:brightness(1.06);}',
+    '.npw-lock{text-align:center;font-size:12px;color:#94a3b8;}',
+    '@media(max-width:480px){.npw-head{padding:20px 18px 14px;}.npw-head h2{font-size:17px;}.npw-body{padding:14px 18px 6px;font-size:13.5px;}.npw-foot{padding:12px 18px 18px;}}'
+  ].join('');
+
+  var HTML = [
+    '<div class="npw-mask">',
+    '<div class="npw-card" role="alertdialog" aria-modal="true" aria-labelledby="npwTitle">',
+    '<div class="npw-head"><span class="npw-tag">重要公告</span><h2 id="npwTitle">本版本为第三方修改版</h2></div>',
+    '<div class="npw-body">',
+    '<p>本页面提供的程序是基于 <b>Plain Craft Launcher 2 2.99.0.0</b> 的第三方二次创作，<b>与原作者龙腾猫跃及 PCL 官方没有任何关系</b>，也不代表官方立场。</p>',
+    '<p>本项目<b>仅用于学习交流使用</b>，不得用于任何其他用途。</p>',
+    '<p class="npw-warn">不得以任何方式用于牟利，包括但不限于倒卖、付费分发、捆绑销售、引流变现等行为。</p>',
+    '<p>使用本项目产生的全部后果由使用者自行承担。</p>',
+    '</div>',
+    '<div class="npw-foot"><button type="button" class="npw-ok">我已知悉，仅用于学习交流</button>',
+    '<span class="npw-lock">该公告无法跳过，每次打开页面都会显示</span></div>',
+    '</div>',
+    '</div>'
+  ].join('');
+
+  function build() {
+    var host = document.createElement('nonprofit-notice');
+    host.id = HOST_ID;
+    host.setAttribute('data-sig', SIG);
+    host.style.cssText = 'all:initial!important;position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483000!important;pointer-events:auto!important;';
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    var style = document.createElement('style');
+    style.textContent = STYLE;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = HTML;
+    root.appendChild(style);
+    root.appendChild(wrap);
+    var btn = wrap.querySelector('.npw-ok');
+    btn.addEventListener('click', function () {
+      dismissed = true;
+      if (host.parentNode) host.parentNode.removeChild(host);
+    });
+    return host;
+  }
+
+  function healthy() {
+    var host = document.getElementById(HOST_ID);
+    if (!host || host.getAttribute('data-sig') !== SIG) return false;
+    var scope = host.shadowRoot || host;
+    var text = scope.textContent || '';
+    if (text.indexOf(KEY_USAGE) < 0 || text.indexOf(KEY_PROFIT) < 0) return false;
+    if (!scope.querySelector('.npw-ok')) return false;
+    var cs = window.getComputedStyle(host);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0' ||
+        cs.position !== 'fixed' || cs.pointerEvents === 'none') return false;
+    return true;
+  }
+
+  function ensure() {
+    if (dismissed) return;
+    if (healthy()) return;
+    var old = document.getElementById(HOST_ID);
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    document.documentElement.appendChild(build());
+  }
+
+  function start() {
+    ensure();
+    var mo = new MutationObserver(function () { ensure(); });
+    mo.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'hidden', 'id', 'data-sig']
+    });
+    setInterval(ensure, 800);
+    window.addEventListener('load', ensure);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();
+</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
