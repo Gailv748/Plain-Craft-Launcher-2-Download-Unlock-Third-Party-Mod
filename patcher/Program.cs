@@ -25,6 +25,7 @@ internal static class Program
         PatchModifyPage(module);
         PatchModpackDispatcher(module);
         PatchModpackManualInstall(module);
+        PatchStartupNotice(module);
 
         var opts = new ModuleWriterOptions(module);
         opts.Logger = DummyLogger.NoThrowInstance;
@@ -372,4 +373,76 @@ internal static class Program
 
         Console.WriteLine("Patched ModModpack.ModpackInstall() (restored manual install entry)");
     }
+
+    // 6. 启动强制公告：在 FormMain 加载后的初始化线程开头插入 PCL 弹窗
+    //    MyMsgBox 单按钮 + ForceWait，用户必须点击「我已知悉」才能继续
+    private static void PatchStartupNotice(ModuleDefMD module)
+    {
+        var formMain = module.Find("PCL.FormMain", false)
+                       ?? throw new InvalidOperationException("FormMain not found");
+        var modMain = module.Find("PCL.ModMain", false)
+                      ?? throw new InvalidOperationException("ModMain not found");
+        var msgBox = modMain.FindMethod("MyMsgBox")
+                     ?? throw new InvalidOperationException("MyMsgBox not found");
+
+        // 定位 FormMain_Loaded 中显示用户协议的后台初始化 lambda
+        MethodDef target = null;
+        foreach (var m in formMain.Methods)
+        {
+            if (m.Body == null) continue;
+            var list = m.Body.Instructions;
+            bool hasEula = list.Any(i => i.OpCode == OpCodes.Ldstr && (string)i.Operand == "协议授权");
+            bool callsMsgBox = list.Any(i => i.OpCode == OpCodes.Call &&
+                                             i.Operand is IMethod im && im.Name == "MyMsgBox");
+            if (hasEula && callsMsgBox)
+            {
+                target = m;
+                break;
+            }
+        }
+        if (target == null) throw new InvalidOperationException("startup EULA method not found");
+
+        var body = target.Body;
+        var ins = body.Instructions;
+
+        if (ins.Any(i => i.OpCode == OpCodes.Ldstr && (string)i.Operand == NoticeTitle))
+        {
+            Console.WriteLine("Startup notice already present, skipped");
+            return;
+        }
+
+        var notice = new List<Instruction>
+        {
+            Instruction.Create(OpCodes.Ldstr, NoticeCaption),
+            Instruction.Create(OpCodes.Ldstr, NoticeTitle),
+            Instruction.Create(OpCodes.Ldstr, "我已知悉"),
+            Instruction.Create(OpCodes.Ldstr, ""),
+            Instruction.Create(OpCodes.Ldstr, ""),
+            Instruction.Create(OpCodes.Ldc_I4_1),   // IsWarn
+            Instruction.Create(OpCodes.Ldc_I4_1),   // HighLight
+            Instruction.Create(OpCodes.Ldc_I4_1),   // ForceWait
+            Instruction.Create(OpCodes.Ldnull),     // Button1Action
+            Instruction.Create(OpCodes.Ldnull),     // Button2Action
+            Instruction.Create(OpCodes.Ldnull),     // Button3Action
+            Instruction.Create(OpCodes.Call, msgBox),
+            Instruction.Create(OpCodes.Pop)
+        };
+        for (int i = 0; i < notice.Count; i++) ins.Insert(i, notice[i]);
+
+        if (body.MaxStack < 11) body.MaxStack = 11;
+        body.OptimizeBranches();
+        body.SimplifyBranches();
+        body.UpdateInstructionOffsets();
+
+        Console.WriteLine($"Patched {target.FullName} (inserted third-party notice dialog)");
+    }
+
+    private const string NoticeTitle = "第三方修改版公告";
+
+    private const string NoticeCaption =
+        "本程序为 Plain Craft Launcher 2 的第三方修改版，与原作者龙腾猫跃及 PCL 官方没有任何关系，不代表官方立场。\r\n\r\n" +
+        "本程序仅用于学习交流使用，不得用于任何其他用途。\r\n\r\n" +
+        "严禁以任何方式牟利，包括但不限于倒卖、付费分发、捆绑销售、引流变现等行为。\r\n\r\n" +
+        "使用本程序产生的全部后果由使用者自行承担。\r\n\r\n" +
+        "点击「我已知悉」表示你已阅读并同意以上声明。";
 }

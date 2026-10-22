@@ -22,7 +22,7 @@
 
 ## 这个版本做了什么
 
-PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownload = True` 关闭了多项下载与整合包功能。本项目使用 [dnlib](https://github.com/0xd4d/dnlib) 在 IL 层做**四处**最小修改，恢复以下五项功能，不改界面、不新增功能、不引入任何新代码：
+PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownload = True` 关闭了多项下载与整合包功能。本项目使用 [dnlib](https://github.com/0xd4d/dnlib) 在 IL 层做**五处**最小修改：其中四处恢复以下五项功能，另一处在每次启动时强制显示第三方修改公告。不新增界面、不引入任何新代码、不下载任何远程代码：
 
 | # | 功能 | 修改点 | 说明 |
 | - | ---- | ------ | ---- |
@@ -31,8 +31,11 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 | 3 | 恢复整合包安装安静 | `PCL.FormMain` 拖放处理 | 恢复后整合包安装异常由原有 catch 安静处理（无需额外补丁） |
 | 4 | 恢复手动安装整合包入口 | `PCL.ModModpack.ModpackInstall()` | 恢复文件选择框 → 调用 `ModpackInstall(File)` |
 | 5 | 恢复整合包分派 | `PCL.ModModpack.ModpackInstall(File,…)` | 恢复 `Select Case PackType` 分派到 `InstallPackCurseForge/HMCL/MMC/MCBBS/Modrinth/LauncherPack/Compress` |
+| 6 | 启动强制公告 | `PCL.FormMain` 初始化线程 | 每次启动弹出「第三方修改版公告」，写明仅用于学习交流、不得以任何方式牟利，必须点击「我已知悉」才能继续 |
 
-补丁器源码完全公开：[`patcher/Program.cs`](patcher/Program.cs)。它不做字符串注入、不下载任何远程代码、不修改其他方法。所有被调用的方法（`DlClientListLoader`、`InstallPack*` 等）均为原版程序中已存在的代码。
+> 公告已编译进程序集的 IL 中，不是配置文件、注册表项或远程推送，无法通过删除文件或修改设置绕过；只有重新修改二进制才能移除。
+
+补丁器源码完全公开：[`patcher/Program.cs`](patcher/Program.cs)。它不下载任何远程代码、不修改其他方法。所有被调用的方法（`DlClientListLoader`、`InstallPack*`、`ModMain.MyMsgBox` 等）均为原版程序中已存在的代码。
 
 ## 下载与使用
 
@@ -46,7 +49,7 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 
 2. **先备份**你原来的 `Plain Craft Launcher 2.exe`。
 3. 用下载的文件替换原文件（或单独放在一个目录运行）。
-4. 运行需要 Windows 与 .NET Framework 4.8。
+4. 运行需要 **Windows 7 SP1 / 8 / 8.1 / 10 / 11**（64 位）与 .NET Framework 4.8。启动公告调用的是 PCL 自带的 WPF 消息框，不含任何与系统版本相关的代码，因此上述系统表现一致。
 
 > 仅支持 PCL2 **2.99.0.0**。其他版本的方法结构可能不同，补丁器会直接报错而不会写出损坏文件。
 
@@ -70,7 +73,7 @@ Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode �
 
 | 文件              | 大小           | MD5                                | SHA256                                                             |
 | --------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------ |
-| 签名版（Release 资产） | 5,980,704 字节 | `—` | `60fcee84d2dfd289a08909b94e1ba78e55abc79bc32c15c57ed34ef9c41e0627` |
+| 签名版（Release 资产） | 5,980,984 字节 | `—` | `46db5338fa9a64e60d369ff5289a30c4cc38959300bdc8a18c392e78c5298b36` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
 请只从上述官方渠道（蓝奏云 / 项目官网 / 本仓库 Releases）下载，并核对 SHA256。
@@ -89,9 +92,9 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 ## 安全性说明
 
-- 修改后的文件**未签名**，部分杀毒软件可能因“未知/被修改”给出启发式告警，这属于信誉问题，不等于检出病毒；如出现具体报毒名，欢迎提 Issue 附上名称。
-- 补丁只改变上述四个方法的 IL 指令，未新增程序集引用、未新增资源、未添加网络请求。
-- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上述四处。
+- 自行构建且**未签名**的文件，或本项目的自签名文件，部分杀毒软件可能因“未知/被修改”给出启发式告警，这属于信誉问题，不等于检出病毒；如出现具体报毒名，欢迎提 Issue 附上名称。
+- 补丁只改变上述五个方法的 IL 指令，未新增程序集引用、未新增资源、未添加网络请求。
+- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上述五处。
 - 本仓库不包含 PCL2 的完整源代码；PCL2 源代码请前往[原仓库](https://github.com/Meloong-Git/PCL)获取。
 
 ## 许可
@@ -102,6 +105,6 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 ## English summary
 
-An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies four minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher. All called methods (`DlClientListLoader`, `InstallPack*`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced.
+An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies five minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher, and (5) show a mandatory third-party/learning-only/no-profit notice on every startup. All called methods (`DlClientListLoader`, `InstallPack*`, `ModMain.MyMsgBox`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced. Supported on 64-bit Windows 7 SP1 / 8 / 8.1 / 10 / 11 with .NET Framework 4.8.
 
 Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from [Lanzou Cloud (recommended, access code `2t1q`)](https://wwayr.lanzout.com/iIG5g4cvj5xa), the project website, or the Releases page, and verify its SHA256.
