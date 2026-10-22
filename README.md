@@ -45,7 +45,7 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 
    | 渠道 | 链接 | 说明 |
    | --- | --- | --- |
-   | **蓝奏云（推荐）** | <https://wwayr.lanzout.com/iIG5g4cvj5xa> | 国内访问快，无需登录；提取码 `2t1q` |
+   | **蓝奏云（推荐）** | <https://wwayr.lanzout.com/iLtnO4czip3i> | 国内访问快，无需登录；提取码 `2t1q` |
    | 项目官网 | <https://newpcl2.netlify.app> | 同目录直链 + GitHub 镜像 |
    | GitHub Releases | [Releases 页面](https://github.com/Gailv748/Plain-Craft-Launcher-2-Download-Unlock-Third-Party-Mod/releases) | 需能访问 GitHub |
 
@@ -109,4 +109,4 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies five minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher, and (5) show a mandatory third-party/learning-only/no-profit notice on every startup. All called methods (`DlClientListLoader`, `InstallPack*`, `ModMain.MyMsgBox`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced. Supported on 64-bit Windows 7 SP1 / 8 / 8.1 / 10 / 11 with .NET Framework 4.8.
 
-Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from [Lanzou Cloud (recommended, access code `2t1q`)](https://wwayr.lanzout.com/iIG5g4cvj5xa), the project website, or the Releases page, and verify its SHA256.
+Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from [Lanzou Cloud (recommended, access code `2t1q`)](https://wwayr.lanzout.com/iLtnO4czip3i), the project website, or the Releases page, and verify its SHA256.
