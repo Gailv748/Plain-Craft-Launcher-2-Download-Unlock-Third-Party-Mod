@@ -263,7 +263,7 @@
         <p>③ 恢复整合包安装安静：拖放安装异常由原有 catch 安静处理。</p>
         <p>④ 恢复手动安装整合包入口：<code>ModpackInstall()</code> 恢复文件选择框。</p>
         <p>⑤ 恢复整合包分派：<code>ModpackInstall(File)</code> 恢复 <code>Select Case</code> 分派到各 <code>InstallPack*</code>。</p>
-        <p>⑥ 启动强制公告：每次打开 PCL2 都会弹出「第三方修改版公告」，标明仅用于学习交流、不得以任何方式牟利，必须点击「我已知悉」才能继续。公告已编译进 IL，删除文件或改设置都无法绕过。</p>
+        <p>⑥ 启动强制公告：每次打开 PCL2 都会弹出「第三方修改版公告」，标明仅用于学习交流、不得以任何方式牟利，必须点击「我已知悉」才能继续。公告编译为独立方法，并在启动流程的<strong>两个独立位置</strong>各调用一次，改掉一处仍会从另一处弹出；是否已弹过只记录在进程内静态字段，不写配置、不读注册表、不依赖网络。不改二进制就无法绕过。</p>
         <p>支持 64 位 Windows 7 SP1 / 8 / 8.1 / 10 / 11（需 .NET Framework 4.8）。补丁器源码完全开源，可自行对比验证。</p>
       </div>
       <div class="info-card">
@@ -272,7 +272,7 @@
         <p><strong>签名者：</strong>PCL2 Third-Party Mod (Non-Official)<br>
         <strong>程序名称：</strong>PCL2解除下载限制版-第三方修改版｜非官方｜仅供学习研究使用｜不进行任何商业获利</p>
         <p class="label">SHA256（签名版）</p>
-        <div class="hash">46db5338fa9a64e60d369ff5289a30c4cc38959300bdc8a18c392e78c5298b36</div>
+        <div class="hash">47b38e5762e5e7ec89010251c93ff87834654834f97fb73677850a889f946d36</div>
         <p style="margin-top:12px;font-size:12.5px;color:#64748b;">提示：自签名证书默认不受 Windows 信任，可能提示「未知发布者」，属正常现象。右键文件 → 属性 → 数字签名 可查看完整声明。</p>
       </div>
     </div>

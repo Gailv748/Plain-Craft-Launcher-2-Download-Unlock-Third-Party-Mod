@@ -374,8 +374,8 @@ internal static class Program
         Console.WriteLine("Patched ModModpack.ModpackInstall() (restored manual install entry)");
     }
 
-    // 6. 启动强制公告：在 FormMain 加载后的初始化线程开头插入 PCL 弹窗
-    //    MyMsgBox 单按钮 + ForceWait，用户必须点击「我已知悉」才能继续
+    // 6. 启动强制公告：双注入点 + 进程内静态标志
+    //    任一处被删除，另一处仍会弹出；标志不落盘，删配置/断网均无效
     private static void PatchStartupNotice(ModuleDefMD module)
     {
         var formMain = module.Find("PCL.FormMain", false)
@@ -385,8 +385,59 @@ internal static class Program
         var msgBox = modMain.FindMethod("MyMsgBox")
                      ?? throw new InvalidOperationException("MyMsgBox not found");
 
-        // 定位 FormMain_Loaded 中显示用户协议的后台初始化 lambda
-        MethodDef target = null;
+        // 进程内标志，默认 false；不写入任何配置文件
+        var modSecret = module.Find("PCL.ModSecret", false)
+                        ?? throw new InvalidOperationException("ModSecret not found");
+        var flag = modSecret.FindField("ThirdPartyNoticeShown");
+        if (flag == null)
+        {
+            flag = new FieldDefUser(
+                "ThirdPartyNoticeShown",
+                new FieldSig(module.CorLibTypes.Boolean),
+                FieldAttributes.Public | FieldAttributes.Static);
+            modSecret.Fields.Add(flag);
+        }
+
+        // 新增专用方法：PCL.ModMain.ShowThirdPartyNotice()
+        // 逻辑放在独立方法内，宿主方法只插入一条 call，不改变原有分支与异常处理结构
+        var noticeMethod = new MethodDefUser(
+            "ShowThirdPartyNotice",
+            MethodSig.CreateStatic(module.CorLibTypes.Void),
+            MethodImplAttributes.IL | MethodImplAttributes.Managed,
+            MethodAttributes.Public | MethodAttributes.Static | MethodAttributes.HideBySig)
+        {
+            Body = new CilBody()
+        };
+        var nb = noticeMethod.Body;
+        nb.MaxStack = 11;
+        var ret = Instruction.Create(OpCodes.Ret);
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldsfld, flag));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Brtrue, ret));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_1));   // 置位，避免重复弹出
+        nb.Instructions.Add(Instruction.Create(OpCodes.Stsfld, flag));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldstr, NoticeCaption));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldstr, NoticeTitle));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldstr, "我已知悉"));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldstr, ""));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldstr, ""));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_1));   // IsWarn
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_1));   // HighLight
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_1));   // ForceWait
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldnull));     // Button1Action
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldnull));     // Button2Action
+        nb.Instructions.Add(Instruction.Create(OpCodes.Ldnull));     // Button3Action
+        nb.Instructions.Add(Instruction.Create(OpCodes.Call, msgBox));
+        nb.Instructions.Add(Instruction.Create(OpCodes.Pop));
+        nb.Instructions.Add(ret);
+        modMain.Methods.Add(noticeMethod);
+
+        // 注入点 1：FormMain_Loaded 入口
+        var loaded = formMain.FindMethod("FormMain_Loaded")
+                     ?? throw new InvalidOperationException("FormMain_Loaded not found");
+        InjectNoticeCall(loaded, noticeMethod);
+
+        // 注入点 2：显示用户协议的后台初始化 lambda 入口
+        MethodDef lambda = null;
         foreach (var m in formMain.Methods)
         {
             if (m.Body == null) continue;
@@ -396,45 +447,25 @@ internal static class Program
                                              i.Operand is IMethod im && im.Name == "MyMsgBox");
             if (hasEula && callsMsgBox)
             {
-                target = m;
+                lambda = m;
                 break;
             }
         }
-        if (target == null) throw new InvalidOperationException("startup EULA method not found");
+        if (lambda == null) throw new InvalidOperationException("startup EULA method not found");
+        InjectNoticeCall(lambda, noticeMethod);
+    }
 
-        var body = target.Body;
-        var ins = body.Instructions;
-
-        if (ins.Any(i => i.OpCode == OpCodes.Ldstr && (string)i.Operand == NoticeTitle))
+    private static void InjectNoticeCall(MethodDef method, IMethod noticeMethod)
+    {
+        var body = method.Body ?? throw new InvalidOperationException($"{method.FullName} has no body");
+        if (body.Instructions.Any(i => i.OpCode == OpCodes.Call && i.Operand == noticeMethod))
         {
-            Console.WriteLine("Startup notice already present, skipped");
+            Console.WriteLine($"Startup notice call already present in {method.FullName}, skipped");
             return;
         }
-
-        var notice = new List<Instruction>
-        {
-            Instruction.Create(OpCodes.Ldstr, NoticeCaption),
-            Instruction.Create(OpCodes.Ldstr, NoticeTitle),
-            Instruction.Create(OpCodes.Ldstr, "我已知悉"),
-            Instruction.Create(OpCodes.Ldstr, ""),
-            Instruction.Create(OpCodes.Ldstr, ""),
-            Instruction.Create(OpCodes.Ldc_I4_1),   // IsWarn
-            Instruction.Create(OpCodes.Ldc_I4_1),   // HighLight
-            Instruction.Create(OpCodes.Ldc_I4_1),   // ForceWait
-            Instruction.Create(OpCodes.Ldnull),     // Button1Action
-            Instruction.Create(OpCodes.Ldnull),     // Button2Action
-            Instruction.Create(OpCodes.Ldnull),     // Button3Action
-            Instruction.Create(OpCodes.Call, msgBox),
-            Instruction.Create(OpCodes.Pop)
-        };
-        for (int i = 0; i < notice.Count; i++) ins.Insert(i, notice[i]);
-
-        if (body.MaxStack < 11) body.MaxStack = 11;
-        body.OptimizeBranches();
-        body.SimplifyBranches();
+        body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, noticeMethod));
         body.UpdateInstructionOffsets();
-
-        Console.WriteLine($"Patched {target.FullName} (inserted third-party notice dialog)");
+        Console.WriteLine($"Patched {method.FullName} (injected notice check)");
     }
 
     private const string NoticeTitle = "第三方修改版公告";
