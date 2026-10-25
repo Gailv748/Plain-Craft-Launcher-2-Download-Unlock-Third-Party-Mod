@@ -565,6 +565,7 @@
     loading(true, '正在读取实例…');
     try {
       await Promise.all([loadMods(), loadPacks(), loadShaders(), loadSaves(), loadShots(), loadServers()]);
+      if (state.tab === 'tools') await loadLogs();
       render();
       updateCounts();
     } catch (e) {
