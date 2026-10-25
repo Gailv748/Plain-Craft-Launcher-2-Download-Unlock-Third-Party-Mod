@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCL2 实例管理助手 · 跨平台</title>
+<style>
+  :root {
+    --blue: #1370F3;
+    --deep: #0B5BCB;
+    --light: #4890F5;
+    --pale: #96C0F9;
+    --line: #D5E6FD;
+    --wash: #EAF2FE;
+    --ink: #343D4A;
+    --sub: #737373;
+    --muted: #A6A6A6;
+    --ok: #22a06b;
+    --warn: #d97706;
+    --danger: #dc2626;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(180deg, #F8FBFF 0%, #EDF3FB 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    padding: 22px 18px 46px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px 18px; box-shadow: 0 8px 26px rgba(52,61,74,.06);
+  }
+  .logo {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--light), var(--deep));
+    color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .3px;
+    box-shadow: 0 6px 16px rgba(19,112,243,.28); flex: none;
+  }
+  .titles h1 { font-size: 18px; font-weight: 750; }
+  .titles p { font-size: 12px; color: var(--sub); margin-top: 3px; }
+  .spacer { flex: 1; }
+  .instance {
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sub);
+    background: var(--wash); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+  }
+  select, input[type=text], input[type=search] {
+    font: inherit; font-size: 13px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--pale); box-shadow: 0 0 0 3px rgba(19,112,243,.10); }
+  button {
+    font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+    border: 0; border-radius: 9px; padding: 9px 14px; color: #fff;
+    background: linear-gradient(135deg, var(--deep), var(--blue));
+    box-shadow: 0 4px 12px rgba(19,112,243,.22);
+    transition: transform .12s, filter .12s;
+    white-space: nowrap;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost {
+    background: #fff; color: var(--deep); border: 1px solid var(--line); box-shadow: none;
+  }
+  button.soft { background: var(--wash); color: var(--deep); border: 1px solid var(--line); box-shadow: none; }
+  button.danger { background: #fff; color: var(--danger); border: 1px solid #f3c9c9; box-shadow: none; }
+  button.sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+  .notice {
+    margin: 14px 0 0; font-size: 12px; line-height: 1.7; color: var(--sub);
+    background: var(--wash); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px;
+  }
+  .notice strong { color: var(--deep); }
+
+  .tabs {
+    display: flex; gap: 6px; margin: 16px 0 0; overflow-x: auto; padding-bottom: 2px;
+  }
+  .tab {
+    background: #fff; color: var(--sub); border: 1px solid var(--line);
+    border-radius: 10px 10px 0 0; padding: 10px 15px; font-size: 13px; font-weight: 650;
+    cursor: pointer; white-space: nowrap;
+  }
+  .tab.active { color: var(--deep); background: var(--wash); border-bottom-color: var(--wash); }
+  .tab .cnt { font-weight: 500; color: var(--muted); margin-left: 5px; }
+
+  .panel {
+    background: #fff; border: 1px solid var(--line); border-top-left-radius: 0;
+    border-radius: 0 14px 14px 14px; padding: 16px;
+    box-shadow: 0 8px 26px rgba(52,61,74,.05); min-height: 360px;
+  }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar .grow { flex: 1; min-width: 180px; }
+  .hintline { font-size: 12px; color: var(--sub); }
+  .state {
+    font-size: 12px; color: var(--sub); background: var(--wash); border: 1px dashed var(--line);
+    border-radius: 10px; padding: 12px 14px; line-height: 1.7;
+  }
+
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid #EAF0F8; border-radius: 11px; padding: 10px 12px;
+    background: #FDFEFF;
+  }
+  .row:hover { border-color: var(--line); background: #fff; }
+  .row .icon {
+    width: 36px; height: 36px; border-radius: 9px; flex: none; display: grid; place-items: center;
+    background: var(--wash); color: var(--deep); font-size: 11px; font-weight: 750;
+  }
+  .row .main { flex: 1; min-width: 0; }
+  .row .name { font-size: 13.5px; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .meta { font-size: 11.5px; color: var(--sub); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill {
+    font-size: 10.5px; padding: 2px 7px; border-radius: 999px; font-weight: 650;
+    background: var(--wash); color: var(--deep); border: 1px solid var(--line);
+  }
+  .pill.ok { background: #E9F8F1; color: var(--ok); border-color: #BFE9D6; }
+  .pill.off { background: #F4F5F7; color: var(--muted); border-color: #E7E9EE; }
+  .pill.warn { background: #FFF6E8; color: var(--warn); border-color: #F6DDBA; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .card {
+    border: 1px solid #EAF0F8; border-radius: 12px; padding: 12px; background: #FDFEFF;
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  }
+  .card:hover { border-color: var(--line); background: #fff; }
+  .card .head { display: flex; gap: 10px; align-items: flex-start; }
+  .card .thumb {
+    width: 46px; height: 46px; border-radius: 10px; flex: none; object-fit: cover;
+    background: var(--wash); display: grid; place-items: center; color: var(--deep);
+    font-weight: 750; font-size: 13px; overflow: hidden;
+  }
+  .card .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .t { font-size: 13px; font-weight: 700; line-height: 1.35; }
+  .card .d { font-size: 11.5px; color: var(--sub); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card .foot .small { font-size: 11px; color: var(--muted); }
+  .shot {
+    border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #fff;
+    display: flex; flex-direction: column;
+  }
+  .shot img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #eef3fa; }
+  .shot .cap { padding: 8px 10px; display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .shot .cap span { font-size: 11px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .empty {
+    text-align: center; color: var(--muted); font-size: 13px; padding: 48px 12px; line-height: 1.8;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(20px);
+    background: #1f2937; color: #fff; border-radius: 10px; padding: 10px 16px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: .22s; z-index: 50;
+    max-width: min(560px, 90vw); line-height: 1.6;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: #991b1b; }
+  .toast.ok { background: #14532d; }
+
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(20,32,52,.42); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 18px; z-index: 40;
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    width: min(760px, 100%); max-height: 86vh; overflow: auto; background: #fff;
+    border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.25); padding: 18px;
+  }
+  .modal h2 { font-size: 16px; font-weight: 750; margin-bottom: 4px; }
+  .modal .sub { font-size: 12px; color: var(--sub); margin-bottom: 14px; line-height: 1.6; }
+  .modal .close { float: right; }
+  .modal .versions { display: flex; flex-direction: column; gap: 8px; }
+  .ver {
+    display: flex; align-items: center; gap: 10px; border: 1px solid #EAF0F8;
+    border-radius: 10px; padding: 9px 11px;
+  }
+  .ver .v { flex: 1; min-width: 0; }
+  .ver .v b { font-size: 13px; }
+  .ver .v span { display: block; font-size: 11.5px; color: var(--sub); margin-top: 2px; }
+
+  .loading {
+    position: fixed; inset: 0; background: rgba(248,251,255,.86); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 60;
+  }
+  .loading.show { display: flex; }
+  .spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid var(--line); border-top-color: var(--blue);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { font-size: 13px; color: var(--sub); }
+
+  footer { margin-top: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.8; text-align: center; }
+  footer a { color: var(--deep); text-decoration: none; }
+
+  @media (max-width: 720px) {
+    body { padding: 12px 10px 30px; }
+    header { padding: 12px; }
+    .titles h1 { font-size: 15px; }
+    .instance { width: 100%; }
+    .instance select { flex: 1; }
+    .panel { padding: 12px; }
+    .row { align-items: flex-start; }
+    .row .acts { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">MC</div>
+    <div class="titles">
+      <h1>PCL2 实例管理助手</h1>
+      <p>第三方辅助工具 · 仅在本地读写你的游戏文件夹 · 不上传任何文件</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="instance">
+      <span>实例</span>
+      <select id="instanceSel"><option value="">未选择</option></select>
+    </div>
+    <button id="pickBtn">选择 .minecraft 文件夹</button>
+    <button id="reloadBtn" class="ghost">刷新</button>
+  </header>
+
+  <div class="notice">
+    <strong>说明：</strong>PCL2 本体是 Windows 专用的 WPF 程序，无法原生移植到 macOS / Linux，也无法用补丁在版本设置里新增管理页面。
+    本工具改为独立的跨平台网页应用：Windows / macOS / Linux 的 Chrome 或 Edge 均可使用，直接读取你的 <code>.minecraft</code> 目录，
+    管理 Mod、材质包、光影、存档、截图与服务器，并可从 Modrinth 搜索、安装与检查更新。
+    与 PCL 官方及原作者无关，仅供学习交流，不得用于任何形式的牟利。
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="mods">Mod 管理<span class="cnt" id="cnt-mods"></span></div>
+    <div class="tab" data-tab="packs">材质包<span class="cnt" id="cnt-packs"></span></div>
+    <div class="tab" data-tab="shaders">光影<span class="cnt" id="cnt-shaders"></span></div>
+    <div class="tab" data-tab="saves">存档<span class="cnt" id="cnt-saves"></span></div>
+    <div class="tab" data-tab="shots">截图<span class="cnt" id="cnt-shots"></span></div>
+    <div class="tab" data-tab="servers">服务器<span class="cnt" id="cnt-servers"></span></div>
+    <div class="tab" data-tab="download">下载中心</div>
+    <div class="tab" data-tab="tools">工具</div>
+  </div>
+
+  <div class="panel" id="panel"></div>
+
+  <footer>
+    PCL2 实例管理助手 · 第三方非官方工具 · 仅用于学习交流，不得牟利 · 官网 <a href="https://newpcl2.netlify.app" target="_blank" rel="noopener">newpcl2.netlify.app</a><br>
+    目录权限由浏览器授予，刷新页面后需重新选择文件夹。推荐使用 Chrome / Edge 最新版。
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-mask" id="modalMask">
+  <div class="modal" id="modalBody"></div>
+</div>
+<div class="loading" id="loading"><div class="spinner"></div><p id="loadingText">正在读取…</p></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ================= 基础状态 =================
+  const DEMO = new URLSearchParams(location.search).has('demo');
+  const state = {
+    root: null,
+    instances: [],
+    instance: '',
+    version: '',
+    loader: '',
+    paths: {},
+    tab: 'mods',
+    mods: [],
+    packs: [],
+    shaders: [],
+    saves: [],
+    shots: [],
+    servers: [],
+    updateInfo: new Map(),
+    searching: false,
+    modrinthType: 'mod',
+    modrinthQuery: '',
+    modrinthResults: [],
+    backupUrl: null,
+    logText: '',
+    crashes: []
+  };
+
+  const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtSize = (n) => {
+    if (n == null) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
+  };
+  const fmtDate = (ts) => ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '—';
+
+  function toast(msg, kind) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (kind ? ' ' + kind : '');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { el.className = 'toast'; }, 3200);
+  }
+  function loading(show, text) {
+    $('#loading').classList.toggle('show', show);
+    if (text) $('#loadingText').textContent = text;
+  }
+  function openModal(html) {
+    $('#modalBody').innerHTML = html;
+    $('#modalMask').classList.add('show');
+  }
+  function closeModal() { $('#modalMask').classList.remove('show'); }
+  $('#modalMask').addEventListener('click', e => { if (e.target === $('#modalMask')) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ================= 演示数据 =================
+  const demoTree = {
+    'versions': [
+      { name: '1.20.1-fabric', kind: 'directory' },
+      { name: '1.20.1-forge', kind: 'directory' },
+      { name: '1.21-neoforge', kind: 'directory' }
+    ],
+    'mods': [
+      { name: 'sodium-fabric-0.5.11.jar', kind: 'file', size: 812345, modified: Date.now() - 86400000 },
+      { name: 'lithium-fabric-0.11.3.jar.disabled', kind: 'file', size: 512000, modified: Date.now() - 172800000 },
+      { name: 'iris-fabric-1.7.0.jar', kind: 'file', size: 1048576, modified: Date.now() - 43200000 }
+    ],
+    'resourcepacks': [
+      { name: 'Stay True 1.20.zip', kind: 'file', size: 21000000, modified: Date.now() - 604800000 },
+      { name: 'VanillaTweaks', kind: 'directory', size: 3400000, modified: Date.now() - 1209600000 }
+    ],
+    'shaderpacks': [
+      { name: 'ComplementaryReimagined_r5.2.zip', kind: 'file', size: 8600000, modified: Date.now() - 259200000 }
+    ],
+    'saves': [
+      { name: '生存世界', kind: 'directory', size: 128000000, modified: Date.now() - 3600000 },
+      { name: '红石测试', kind: 'directory', size: 22000000, modified: Date.now() - 90000000 }
+    ],
+    'screenshots': [
+      { name: '2026-10-21_20.15.32.png', kind: 'file', size: 1820000, modified: Date.now() - 7200000 },
+      { name: '2026-10-20_19.02.11.png', kind: 'file', size: 2100000, modified: Date.now() - 90000000 }
+    ],
+    'servers': [
+      { name: 'Hypixel', ip: 'mc.hypixel.net', icon: null, demo: true },
+      { name: '同学服', ip: 'play.example.com:25565', icon: null, demo: true }
+    ],
+    'logs': [
+      { name: 'latest.log', kind: 'file', size: 48000, modified: Date.now() - 600000 },
+      { name: '2026-10-20-1.log.gz', kind: 'file', size: 120000, modified: Date.now() - 86400000 }
+    ],
+    'crash-reports': [
+      { name: 'crash-2026-10-21_20.15.32-client.txt', kind: 'file', size: 22000, modified: Date.now() - 3600000 }
+    ]
+  };
+  const demoFiles = new Map();
+
+  // ================= 文件系统封装 =================
+  const parts = p => p.split('/').filter(Boolean);
+
+  async function dirAt(path, create) {
+    let h = state.root;
+    for (const part of parts(path)) h = await h.getDirectoryHandle(part, { create: !!create });
+    return h;
+  }
+  async function listDir(path) {
+    if (DEMO) return (demoTree[path] || []).map(x => ({ ...x }));
+    let d;
+    try { d = await dirAt(path); } catch (e) { return []; }
+    const out = [];
+    for await (const [name, h] of d.entries()) {
+      let size = null, modified = null;
+      if (h.kind === 'file') {
+        try { const f = await h.getFile(); size = f.size; modified = f.lastModified; } catch (e) {}
+      }
+      out.push({ name, kind: h.kind, size, modified, handle: h });
+    }
+    return out;
+  }
+  async function existsDir(path) {
+    if (DEMO) return Object.prototype.hasOwnProperty.call(demoTree, path);
+    try { await dirAt(path); return true; } catch (e) { return false; }
+  }
+  async function readFile(path, name) {
+    if (DEMO) {
+      const blob = demoFiles.get(path + '/' + name);
+      if (blob) return blob;
+      if (name.endsWith('.png')) return await demoPng();
+      return new Blob(['demo'], { type: 'application/octet-stream' });
+    }
+    const d = await dirAt(path);
+    const fh = await d.getFileHandle(name);
+    return await fh.getFile();
+  }
+  async function writeFile(path, name, data) {
+    if (DEMO) {
+      demoFiles.set(path + '/' + name, data instanceof Blob ? data : new Blob([data]));
+      const arr = demoTree[path] || (demoTree[path] = []);
+      if (!arr.some(x => x.name === name)) {
+        arr.push({ name, kind: 'file', size: data.size || 0, modified: Date.now() });
+      }
+      return;
+    }
+    const d = await dirAt(path, true);
+    const fh = await d.getFileHandle(name, { create: true });
+    const w = await fh.createWritable();
+    await w.write(data);
+    await w.close();
+  }
+  async function deleteEntry(path, name, kind) {
+    if (DEMO) {
+      demoTree[path] = (demoTree[path] || []).filter(x => x.name !== name);
+      demoFiles.delete(path + '/' + name);
+      return;
+    }
+    const d = await dirAt(path);
+    await d.removeEntry(name, { recursive: kind === 'directory' });
+  }
+  async function fileSizeOf(path, name) {
+    if (DEMO) {
+      const item = (demoTree[path] || []).find(x => x.name === name);
+      return item && item.size || 0;
+    }
+    const f = await readFile(path, name);
+    return f.size;
+  }
+  async function demoPng() {
+    if (demoPng._b) return demoPng._b;
+    const c = document.createElement('canvas');
+    c.width = 480; c.height = 270;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 480, 270);
+    g.addColorStop(0, '#1370F3'); g.addColorStop(1, '#96C0F9');
+    x.fillStyle = g; x.fillRect(0, 0, 480, 270);
+    x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 26px sans-serif';
+    x.fillText('Screenshot', 150, 145);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    demoPng._b = blob;
+    return blob;
+  }
+
+  // ================= 实例解析 =================
+  function parseVersion(name) {
+    const m = name.match(/(\d+\.\d+(?:\.\d+)?)/);
+    const l = name.toLowerCase();
+    const loader = l.includes('neoforge') ? 'neoforge'
+      : l.includes('forge') ? 'forge'
+      : l.includes('quilt') ? 'quilt'
+      : l.includes('fabric') ? 'fabric'
+      : l.includes('optifine') ? 'optifine' : '';
+    return { version: m ? m[1] : '', loader };
+  }
+
+  async function scanInstances() {
+    const dirs = (await listDir('versions')).filter(x => x.kind === 'directory');
+    state.instances = dirs.map(x => x.name).sort();
+    const sel = $('#instanceSel');
+    sel.innerHTML = state.instances.length
+      ? state.instances.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('')
+      : '<option value="">（没有 versions 文件夹）</option>';
+    if (state.instances.length) {
+      const saved = state.instance && state.instances.includes(state.instance) ? state.instance : state.instances[0];
+      state.instance = saved;
+      sel.value = saved;
+      await useInstance(saved);
+    } else {
+      state.instance = '';
+      state.version = ''; state.loader = '';
+      await resolvePaths('');
+      await refreshAll();
+    }
+  }
+
+  async function resolvePaths(instance) {
+    const base = instance ? 'versions/' + instance : '';
+    const map = {
+      mods: 'mods',
+      resourcepacks: 'resourcepacks',
+      shaderpacks: 'shaderpacks',
+      saves: 'saves',
+      screenshots: 'screenshots'
+    };
+    for (const key of Object.keys(map)) {
+      if (base && await existsDir(base + '/' + map[key])) {
+        map[key] = base + '/' + map[key];
+      }
+    }
+    state.paths = map;
+  }
+
+  async function useInstance(name) {
+    state.instance = name;
+    const pv = parseVersion(name);
+    state.version = pv.version;
+    state.loader = pv.loader;
+    await resolvePaths(name);
+    await refreshAll();
+  }
+
+  async function pickRoot() {
+    if (!window.showDirectoryPicker) {
+      toast('当前浏览器不支持文件夹访问，请使用 Chrome / Edge', 'err');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'mc-root' });
+      state.root = handle;
+      await saveRootHandle(handle).catch(() => {});
+      await scanInstances();
+      toast('已读取：' + handle.name, 'ok');
+    } catch (e) {
+      if (e && e.name !== 'AbortError') toast('打开文件夹失败：' + e.message, 'err');
+    }
+  }
+
+  // 用 IndexedDB 记住上次选择的文件夹，下次打开可直接恢复（需浏览器仍保留授权）
+  function idbOpen() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('pcl2-mc-manager', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function idbPut(key, val) {
+    const db = await idbOpen();
+    await new Promise((res, rej) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(val, key);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+    db.close();
+  }
+  async function idbGet(key) {
+    const db = await idbOpen();
+    const val = await new Promise((res, rej) => {
+      const tx = db.transaction('kv', 'readonly');
+      const r = tx.objectStore('kv').get(key);
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    db.close();
+    return val;
+  }
+  async function saveRootHandle(h) { await idbPut('root', h); }
+  async function restoreRootHandle() {
+    try {
+      const h = await idbGet('root');
+      if (!h || !h.queryPermission) return null;
+      return (await h.queryPermission({ mode: 'readwrite' })) === 'granted' ? h : null;
+    } catch (e) { return null; }
+  }
+
+  // ================= 刷新各列表 =================
+  async function refreshAll() {
+    if (!state.root && !DEMO) {
+      render();
+      return;
+    }
+    loading(true, '正在读取实例…');
+    try {
+      await Promise.all([loadMods(), loadPacks(), loadShaders(), loadSaves(), loadShots(), loadServers()]);
+      render();
+      updateCounts();
+    } catch (e) {
+      toast('读取失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  async function loadMods() {
+    if (!state.root && !DEMO) { state.mods = []; return; }
+    const list = await listDir(state.paths.mods);
+    state.mods = list
+      .filter(x => x.kind === 'file' && (x.name.endsWith('.jar') || x.name.endsWith('.jar.disabled')))
+      .map(x => ({
+        name: x.name,
+        disabled: x.name.endsWith('.disabled'),
+        base: x.name.replace(/\.disabled$/, ''),
+        size: x.size,
+        modified: x.modified
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async function loadPacks() {
+    if (!state.root && !DEMO) { state.packs = []; return; }
+    const list = await listDir(state.paths.resourcepacks);
+    state.packs = list.filter(x => x.kind === 'directory' || /\.zip$/i.test(x.name));
+  }
+  async function loadShaders() {
+    if (!state.root && !DEMO) { state.shaders = []; return; }
+    const list = await listDir(state.paths.shaderpacks);
+    state.shaders = list.filter(x => x.kind === 'directory' || /\.zip$/i.test(x.name));
+  }
+  async function loadSaves() {
+    if (!state.root && !DEMO) { state.saves = []; return; }
+    const list = await listDir(state.paths.saves);
+    state.saves = list.filter(x => x.kind === 'directory').map(x => ({
+      name: x.name, size: x.size, modified: x.modified, levelName: ''
+    }));
+    // 尝试读取 level.dat 中的世界名
+    for (const s of state.saves.slice(0, 30)) {
+      try {
+        const blob = await readFile(state.paths.saves + '/' + s.name, 'level.dat');
+        const buf = await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+        const nbt = parseNbt(buf);
+        const data = nbtToJS(nbt);
+        if (data && data.Data && typeof data.Data.LevelName === 'string') s.levelName = data.Data.LevelName;
+      } catch (e) {}
+    }
+  }
+  async function loadShots() {
+    if (!state.root && !DEMO) { state.shots = []; return; }
+    const list = await listDir(state.paths.screenshots);
+    state.shots = list
+      .filter(x => x.kind === 'file' && /\.(png|jpe?g)$/i.test(x.name))
+      .sort((a, b) => (b.modified || 0) - (a.modified || 0))
+      .slice(0, 60);
+  }
+  async function loadServers() {
+    state.servers = [];
+    if (!state.root && !DEMO) return;
+    if (DEMO) { state.servers = demoTree.servers.slice(); return; }
+    try {
+      const f = await readFile('', 'servers.dat');
+      const buf = await f.arrayBuffer();
+      state.servers = parseServers(buf);
+    } catch (e) {
+      state.servers = [];
+    }
+  }
+
+  async function loadLogs() {
+    state.logText = '';
+    state.crashes = [];
+    if (!state.root && !DEMO) return;
+    const logs = await listDir('logs');
+    const latest = logs.filter(x => x.kind === 'file' && /\.log$/i.test(x.name))
+      .sort((a, b) => (b.modified || 0) - (a.modified || 0))[0];
+    if (latest) {
+      try {
+        const blob = await readFile('logs', latest.name);
+        const text = await blob.text();
+        const lines = text.split(/\r?\n/);
+        state.logText = (lines.length > 400 ? lines.slice(-400).join('\n') : text);
+      } catch (e) {}
+    }
+    const reports = await listDir('crash-reports');
+    state.crashes = reports
+      .filter(x => x.kind === 'file' && /\.(txt|log)$/i.test(x.name))
+      .sort((a, b) => (b.modified || 0) - (a.modified || 0))
+      .slice(0, 30);
+  }
+
+  async function updateCounts() {
+    const set = (id, n) => { const el = $('#' + id); if (el) el.textContent = n ? String(n) : ''; };
+    set('cnt-mods', state.mods.length);
+    set('cnt-packs', state.packs.length);
+    set('cnt-shaders', state.shaders.length);
+    set('cnt-saves', state.saves.length);
+    set('cnt-shots', state.shots.length);
+    set('cnt-servers', state.servers.length);
+  }
+
+  // ================= 渲染 =================
+  function render() {
+    const panel = $('#panel');
+    $$('#tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.tab));
+    if (!state.root && !DEMO) {
+      panel.innerHTML = '<div class="empty">请先点击右上角「选择 .minecraft 文件夹」<br>浏览器会请求只读/读写权限，所有操作都在你的电脑本地完成。</div>';
+      return;
+    }
+    if (state.tab === 'mods') panel.innerHTML = renderMods();
+    else if (state.tab === 'packs') panel.innerHTML = renderPacks();
+    else if (state.tab === 'shaders') panel.innerHTML = renderShaders();
+    else if (state.tab === 'saves') panel.innerHTML = renderSaves();
+    else if (state.tab === 'shots') panel.innerHTML = renderShots();
+    else if (state.tab === 'servers') panel.innerHTML = renderServers();
+    else if (state.tab === 'download') panel.innerHTML = renderDownload();
+    else if (state.tab === 'tools') panel.innerHTML = renderTools();
+    bindPanel();
+  }
+
+  function instanceHint() {
+    return state.instance
+      ? '<span class="hintline">实例：' + esc(state.instance) + (state.version ? ' · MC ' + esc(state.version) : '') + (state.loader ? ' · ' + esc(state.loader) : '') + '</span>'
+      : '<span class="hintline">未选择实例，将使用 .minecraft 根目录</span>';
+  }
+
+  function renderMods() {
+    const q = state.qMods || '';
+    const list = state.mods.filter(m => m.name.toLowerCase().includes(q.toLowerCase()));
+    return '<div class="toolbar">' +
+      '<input id="qMods" class="grow" type="search" placeholder="搜索 Mod 文件名…" value="' + esc(q) + '">' +
+      '<button id="btnCheckUpdate" class="soft">检查更新</button>' +
+      '<button id="btnUpdateAll" class="soft">一键更新（<span id="updCount">' + countUpdates() + '</span>）</button>' +
+      '<button id="btnRefreshMods" class="ghost">刷新</button>' +
+      '<button id="btnToggleAllMods" class="ghost">全部启用/禁用</button>' +
+      '<span class="hintline">' + list.length + ' 个</span></div>' +
+      instanceHint() +
+      '<div class="list" style="margin-top:12px">' +
+      (list.length ? list.map(m => {
+        const upd = state.updateInfo.get(m.base);
+        const badge = m.disabled ? '<span class="pill off">已禁用</span>' : '<span class="pill ok">已启用</span>';
+        const updBadge = upd ? '<span class="pill warn">可更新 → ' + esc(upd.version_number) + '</span>' : '';
+        return '<div class="row">' +
+          '<div class="icon">JAR</div>' +
+          '<div class="main"><div class="name" title="' + esc(m.name) + '">' + esc(m.name) + '</div>' +
+          '<div class="meta">' + badge + updBadge +
+          '<span>' + fmtSize(m.size) + '</span><span>' + fmtDate(m.modified) + '</span></div></div>' +
+          '<div class="acts">' +
+          (upd ? '<button class="sm" data-act="update" data-name="' + esc(m.name) + '">更新</button>' : '') +
+          '<button class="sm soft" data-act="toggle" data-name="' + esc(m.name) + '">' + (m.disabled ? '启用' : '禁用') + '</button>' +
+          '<button class="sm danger" data-act="delmod" data-name="' + esc(m.name) + '">删除</button>' +
+          '</div></div>';
+      }).join('') : '<div class="empty">没有找到 Mod。把 .jar 放进 mods 文件夹后点刷新。</div>') +
+      '</div>';
+  }
+
+  function renderPacks() {
+    return '<div class="toolbar">' +
+      '<input id="filePack" type="file" accept=".zip" multiple style="display:none">' +
+      '<button id="btnImportPack" class="soft">导入材质包（.zip）</button>' +
+      '<button id="btnDownloadPack" class="soft">从 Modrinth 下载</button>' +
+      '<button id="btnRefreshPacks" class="ghost">刷新</button>' +
+      '<span class="hintline">' + state.packs.length + ' 个 · 启用/排序请在游戏内「选项 → 资源包」中调整</span></div>' +
+      instanceHint() +
+      '<div class="grid" style="margin-top:12px">' +
+      (state.packs.length ? state.packs.map(p => '<div class="card"><div class="head">' +
+        '<div class="thumb">' + (p.kind === 'directory' ? '文件夹' : 'ZIP') + '</div>' +
+        '<div><div class="t">' + esc(p.name) + '</div><div class="d">' + (p.kind === 'directory' ? '未打包的材质包文件夹' : fmtSize(p.size)) + '</div></div></div>' +
+        '<div class="foot"><button class="sm danger" data-act="delpack" data-name="' + esc(p.name) + '" data-kind="' + p.kind + '">删除</button></div></div>').join('')
+        : '<div class="empty">没有材质包。可以导入 .zip，或从 Modrinth 下载。</div>') +
+      '</div>';
+  }
+
+  function renderShaders() {
+    return '<div class="toolbar">' +
+      '<input id="fileShader" type="file" accept=".zip" multiple style="display:none">' +
+      '<button id="btnImportShader" class="soft">导入光影（.zip）</button>' +
+      '<button id="btnDownloadShader" class="soft">从 Modrinth 下载</button>' +
+      '<button id="btnRefreshShaders" class="ghost">刷新</button>' +
+      '<span class="hintline">' + state.shaders.length + ' 个 · 需要 Iris / OptiFine 才能加载</span></div>' +
+      instanceHint() +
+      '<div class="grid" style="margin-top:12px">' +
+      (state.shaders.length ? state.shaders.map(p => '<div class="card"><div class="head">' +
+        '<div class="thumb">' + (p.kind === 'directory' ? '文件夹' : 'ZIP') + '</div>' +
+        '<div><div class="t">' + esc(p.name) + '</div><div class="d">' + (p.kind === 'directory' ? '未打包的光影文件夹' : fmtSize(p.size)) + '</div></div></div>' +
+        '<div class="foot"><button class="sm danger" data-act="delshader" data-name="' + esc(p.name) + '" data-kind="' + p.kind + '">删除</button></div></div>').join('')
+        : '<div class="empty">没有光影。可以导入 .zip，或从 Modrinth 下载。</div>') +
+      '</div>';
+  }
+
+  function renderSaves() {
+    return '<div class="toolbar"><button id="btnRefreshSaves" class="ghost">刷新</button>' +
+      '<span class="hintline">' + state.saves.length + ' 个存档 · 删除前建议先备份</span></div>' +
+      instanceHint() +
+      '<div class="list" style="margin-top:12px">' +
+      (state.saves.length ? state.saves.map(s => '<div class="row">' +
+        '<div class="icon">世界</div>' +
+        '<div class="main"><div class="name">' + esc(s.levelName || s.name) + '</div>' +
+        '<div class="meta"><span>文件夹：' + esc(s.name) + '</span><span>' + fmtSize(s.size) + '</span><span>' + fmtDate(s.modified) + '</span></div></div>' +
+        '<div class="acts">' +
+        '<button class="sm soft" data-act="backup" data-name="' + esc(s.name) + '">备份 ZIP</button>' +
+        '<button class="sm danger" data-act="delsave" data-name="' + esc(s.name) + '">删除</button>' +
+        '</div></div>').join('') : '<div class="empty">没有找到存档（saves 文件夹为空）。</div>') +
+      '</div>';
+  }
+
+  function renderShots() {
+    return '<div class="toolbar"><button id="btnRefreshShots" class="ghost">刷新</button>' +
+      '<span class="hintline">' + state.shots.length + ' 张（最多显示 60 张）</span></div>' +
+      instanceHint() +
+      '<div class="grid" style="margin-top:12px">' +
+      (state.shots.length ? state.shots.map(s => '<div class="shot" data-shot="' + esc(s.name) + '">' +
+        '<img data-src="' + esc(s.name) + '" alt="">' +
+        '<div class="cap"><span title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+        '<button class="sm danger" data-act="delshots" data-name="' + esc(s.name) + '">删除</button></div></div>').join('')
+        : '<div class="empty">没有截图（screenshots 文件夹为空）。</div>') +
+      '</div>';
+  }
+
+  function renderServers() {
+    return '<div class="toolbar"><button id="btnAddServer">添加服务器</button>' +
+      '<button id="btnRefreshServers" class="ghost">重新读取</button>' +
+      '<span class="hintline">' + state.servers.length + ' 个 · 直接编辑 servers.dat</span></div>' +
+      '<div class="list" style="margin-top:12px">' +
+      (state.servers.length ? state.servers.map((s, i) => '<div class="row">' +
+        '<div class="icon">' + (s.icon ? '<img src="' + favIcon(s.icon) + '" style="width:100%;height:100%;object-fit:cover;border-radius:9px" alt="">' : 'SRV') + '</div>' +
+        '<div class="main"><div class="name">' + esc(s.name || '(未命名)') + '</div>' +
+        '<div class="meta"><span>' + esc(s.ip) + '</span></div></div>' +
+        '<div class="acts">' +
+        '<button class="sm soft" data-act="editserver" data-i="' + i + '">编辑</button>' +
+        '<button class="sm danger" data-act="delserver" data-i="' + i + '">删除</button>' +
+        '</div></div>').join('') : '<div class="empty">servers.dat 里还没有服务器。点击「添加服务器」。</div>') +
+      '</div>';
+  }
+
+  function renderDownload() {
+    return '<div class="toolbar">' +
+      '<select id="dlType">' +
+      '<option value="mod"' + (state.modrinthType === 'mod' ? ' selected' : '') + '>Mod</option>' +
+      '<option value="resourcepack"' + (state.modrinthType === 'resourcepack' ? ' selected' : '') + '>材质包</option>' +
+      '<option value="shader"' + (state.modrinthType === 'shader' ? ' selected' : '') + '>光影</option>' +
+      '</select>' +
+      '<input id="dlQuery" class="grow" type="search" placeholder="搜索 Modrinth 项目，例如 sodium / complementary…" value="' + esc(state.modrinthQuery) + '">' +
+      '<button id="btnSearch">搜索</button>' +
+      '<span class="hintline">' + (state.version ? '自动筛选 MC ' + esc(state.version) + (state.loader ? ' / ' + esc(state.loader) : '') : '未识别实例版本，将搜索全部版本') + '</span>' +
+      '</div>' +
+      (state.searching ? '<div class="empty">正在搜索 Modrinth…</div>' :
+        (state.modrinthResults.length ? '<div class="grid">' + state.modrinthResults.map(p => '<div class="card">' +
+          '<div class="head"><div class="thumb">' + (p.icon_url ? '<img src="' + esc(p.icon_url) + '" alt="">' : 'MOD') + '</div>' +
+          '<div><div class="t">' + esc(p.title) + '</div><div class="d">' + esc(p.description) + '</div></div></div>' +
+          '<div class="foot"><span class="small">' + (p.downloads ? Number(p.downloads).toLocaleString('zh-CN') + ' 次下载' : '') + '</span>' +
+          '<button class="sm" data-act="project" data-id="' + esc(p.project_id) + '" data-title="' + esc(p.title) + '" data-type="' + esc(p.project_type) + '">选择版本</button></div></div>').join('') + '</div>'
+          : '<div class="empty">输入关键词搜索 Modrinth。安装时会自动写入当前实例对应的文件夹。</div>')) +
+      '<p class="hintline" style="margin-top:14px">数据来源：Modrinth 官方 API。下载的文件直接保存到本地，不经过任何第三方服务器。</p>';
+  }
+
+  function renderTools() {
+    return '<div class="toolbar">' +
+      '<button id="btnRefreshTools" class="soft">刷新日志</button>' +
+      '<button id="btnCopyLog" class="ghost">复制日志</button>' +
+      '<span class="hintline">显示 logs/latest.log 的最后 400 行 · 崩溃报告 ' + state.crashes.length + ' 个</span></div>' +
+      '<div class="list" style="margin-top:12px">' +
+      (state.crashes.length ? state.crashes.map(c => '<div class="row">' +
+        '<div class="icon">崩溃</div>' +
+        '<div class="main"><div class="name">' + esc(c.name) + '</div>' +
+        '<div class="meta"><span>' + fmtSize(c.size) + '</span><span>' + fmtDate(c.modified) + '</span></div></div>' +
+        '<div class="acts"><button class="sm soft" data-act="viewcrash" data-name="' + esc(c.name) + '">查看</button></div></div>').join('')
+        : '<div class="empty">没有崩溃报告（crash-reports 文件夹为空）。</div>') +
+      '</div>' +
+      '<div class="toolbar" style="margin-top:16px"><span class="hintline">latest.log</span></div>' +
+      (state.logText
+        ? '<pre class="log" style="white-space:pre-wrap;word-break:break-all;font:12px/1.55 ui-monospace,Menlo,monospace;background:#F7FAFF;border:1px solid #EAF0F8;border-radius:10px;padding:12px;max-height:380px;overflow:auto;margin-top:8px">' + esc(state.logText) + '</pre>'
+        : '<div class="empty">没有找到 logs/latest.log。先启动一次游戏再刷新。</div>') +
+      '<p class="hintline" style="margin-top:14px">日志只在本机读取，不会上传。排查 Mod 冲突时，先看崩溃报告最上方的 "Description" 与 "Caused by"。</p>';
+  }
+
+  // ================= 事件绑定 =================
+  function bindPanel() {
+    const on = (id, ev, fn) => { const el = $('#' + id); if (el) el.addEventListener(ev, fn); };
+    on('qMods', 'input', e => { state.qMods = e.target.value; render(); });
+    on('btnCheckUpdate', 'click', checkUpdates);
+    on('btnUpdateAll', 'click', updateAll);
+    on('btnRefreshMods', 'click', async () => { await loadMods(); render(); });
+    on('btnToggleAllMods', 'click', toggleAllMods);
+    on('btnRefreshTools', 'click', async () => { await loadLogs(); render(); });
+    on('btnCopyLog', 'click', async () => {
+      if (!state.logText) { toast('没有日志可复制'); return; }
+      try { await navigator.clipboard.writeText(state.logText); toast('日志已复制到剪贴板', 'ok'); }
+      catch (e) { toast('复制失败，请手动选择文本', 'err'); }
+    });
+    on('btnImportPack', 'click', () => $('#filePack').click());
+    on('filePack', 'change', e => importZips(e, state.paths.resourcepacks, loadPacks));
+    on('btnImportShader', 'click', () => $('#fileShader').click());
+    on('fileShader', 'change', e => importZips(e, state.paths.shaderpacks, loadShaders));
+    on('btnRefreshPacks', 'click', async () => { await loadPacks(); render(); });
+    on('btnRefreshShaders', 'click', async () => { await loadShaders(); render(); });
+    on('btnRefreshSaves', 'click', async () => { await loadSaves(); render(); });
+    on('btnRefreshShots', 'click', async () => { await loadShots(); render(); });
+    on('btnRefreshServers', 'click', async () => { await loadServers(); render(); });
+    on('btnAddServer', 'click', () => serverModal(-1));
+    on('btnDownloadPack', 'click', () => { state.tab = 'download'; state.modrinthType = 'resourcepack'; render(); searchModrinth(); });
+    on('btnDownloadShader', 'click', () => { state.tab = 'download'; state.modrinthType = 'shader'; render(); searchModrinth(); });
+    on('dlType', 'change', e => { state.modrinthType = e.target.value; searchModrinth(); });
+    on('dlQuery', 'keydown', e => { if (e.key === 'Enter') searchModrinth(); });
+    on('btnSearch', 'click', searchModrinth);
+
+    // 列表按钮（事件委托）
+    const panel = $('#panel');
+    panel.onclick = async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const name = btn.dataset.name;
+      try {
+        if (act === 'toggle') await toggleMod(name);
+        else if (act === 'delmod') await deleteMod(name);
+        else if (act === 'update') await updateOne(btn);
+        else if (act === 'delpack') await deletePack(name, btn.dataset.kind, 'resourcepacks');
+        else if (act === 'delshader') await deletePack(name, btn.dataset.kind, 'shaderpacks');
+        else if (act === 'delsave') await deleteSave(name);
+        else if (act === 'backup') await backupSave(name);
+        else if (act === 'delshots') await deleteShot(name);
+        else if (act === 'editserver') serverModal(parseInt(btn.dataset.i, 10));
+        else if (act === 'delserver') await deleteServer(parseInt(btn.dataset.i, 10));
+        else if (act === 'viewcrash') await viewCrash(name);
+        else if (act === 'project') openProject(btn.dataset.id, btn.dataset.title, btn.dataset.type);
+      } catch (err) {
+        toast(err.message || String(err), 'err');
+      }
+    };
+
+    // 截图缩略图
+    if (state.tab === 'shots') {
+      $$('img[data-src]').forEach(async img => {
+        const name = img.dataset.src;
+        try {
+          const blob = await readFile(state.paths.screenshots, name);
+          const url = URL.createObjectURL(blob);
+          img.src = url;
+          img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+        } catch (e) {
+          img.removeAttribute('data-src');
+        }
+      });
+    }
+  }
+
+  // ================= Mod 操作 =================
+  async function setModDisabled(name, disabled) {
+    const base = name.replace(/\.disabled$/, '');
+    const target = disabled ? base + '.disabled' : base;
+    if (name === target) return;
+    if (DEMO) {
+      const list = demoTree[state.paths.mods] || [];
+      const item = list.find(x => x.name === name);
+      if (item) item.name = target;
+      return;
+    }
+    const dir = state.paths.mods;
+    const blob = await readFile(dir, name);
+    await writeFile(dir, target, blob);
+    await deleteEntry(dir, name, 'file');
+  }
+
+  async function toggleMod(name) {
+    const isDisabled = name.endsWith('.disabled');
+    await setModDisabled(name, !isDisabled);
+    await loadMods(); render();
+    toast((isDisabled ? '已启用 ' : '已禁用 ') + name.replace(/\.disabled$/, ''));
+  }
+
+  async function toggleAllMods() {
+    if (!state.mods.length) { toast('没有 Mod'); return; }
+    const anyEnabled = state.mods.some(m => !m.disabled);
+    if (!confirm(anyEnabled ? '禁用全部 Mod？' : '启用全部 Mod？')) return;
+    loading(true, '正在处理…');
+    try {
+      for (const m of state.mods.slice()) {
+        if (m.disabled !== anyEnabled) await setModDisabled(m.name, anyEnabled);
+      }
+      await loadMods(); render();
+      toast(anyEnabled ? '已全部禁用' : '已全部启用', 'ok');
+    } catch (e) {
+      toast('操作失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  async function deleteMod(name) {
+    if (!confirm('确定删除 Mod「' + name + '」？此操作不可撤销。')) return;
+    await deleteEntry(state.paths.mods, name, 'file');
+    state.updateInfo.delete(name.replace(/\.disabled$/, ''));
+    await loadMods(); render();
+    toast('已删除 ' + name);
+  }
+
+  function countUpdates() { return state.updateInfo.size; }
+
+  async function sha1Hex(blob) {
+    if (!crypto.subtle) throw new Error('当前页面不是安全上下文，无法计算文件哈希（请用 https 或 localhost 打开）');
+    const buf = await blob.arrayBuffer();
+    const h = await crypto.subtle.digest('SHA-1', buf);
+    return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function checkUpdates() {
+    if (!state.mods.length) { toast('没有 Mod 可检查'); return; }
+    const enabled = state.mods.filter(m => !m.disabled).slice(0, 30);
+    if (!enabled.length) { toast('没有已启用的 Mod'); return; }
+    loading(true, '正在计算文件哈希…');
+    try {
+      const hashes = [];
+      const byHash = new Map();
+      for (const m of enabled) {
+        const blob = await readFile(state.paths.mods, m.name);
+        const h = await sha1Hex(blob);
+        hashes.push(h);
+        byHash.set(h, m);
+      }
+      loading(true, '正在向 Modrinth 查询更新…');
+      const res = await fetch('https://api.modrinth.com/v2/version_files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes, algorithm: 'sha1' })
+      });
+      if (!res.ok) throw new Error('Modrinth 返回 ' + res.status);
+      const data = await res.json();
+      state.updateInfo.clear();
+      const projects = new Map();
+      for (const h of hashes) {
+        const v = data[h];
+        if (v && v.project_id) projects.set(v.project_id, byHash.get(h));
+      }
+      let done = 0;
+      for (const [pid, mod] of projects) {
+        done++;
+        loading(true, '检查更新 ' + done + ' / ' + projects.size + '…');
+        const versions = await modrinthVersions(pid);
+        const latest = versions.find(v => {
+          if (state.version && !v.game_versions.includes(state.version)) return false;
+          if (state.loader && !v.loaders.includes(state.loader)) return false;
+          return true;
+        }) || versions[0];
+        if (!latest) continue;
+        const localHash = [...byHash.entries()].find(([, m]) => m === mod)[0];
+        const latestHash = (latest.files.find(f => f.primary) || latest.files[0] || {}).hashes?.sha1;
+        if (latestHash && latestHash !== localHash) {
+          state.updateInfo.set(mod.base, latest);
+        }
+      }
+      render();
+      toast(state.updateInfo.size ? '发现 ' + state.updateInfo.size + ' 个可更新 Mod' : '所有 Mod 都是最新的', 'ok');
+    } catch (err) {
+      toast('检查更新失败：' + err.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  async function updateOne(btn) {
+    const name = btn.dataset.name;
+    const mod = state.mods.find(m => m.name === name);
+    if (!mod) return;
+    const upd = state.updateInfo.get(mod.base);
+    if (!upd) { toast('没有可用的更新信息'); return; }
+    const file = upd.files.find(f => f.primary) || upd.files[0];
+    if (!file) { toast('该版本没有可下载文件', 'err'); return; }
+    if (!confirm('更新「' + mod.name + '」到 ' + upd.version_number + '？\n旧文件会保留为 .disabled，可随时恢复。')) return;
+    loading(true, '正在下载 ' + upd.version_number + '…');
+    try {
+      const blob = await fetch(file.url).then(r => { if (!r.ok) throw new Error('下载失败 ' + r.status); return r.blob(); });
+      const enabledName = mod.base;
+      if (!mod.disabled) {
+        await writeFile(state.paths.mods, enabledName + '.disabled', await readFile(state.paths.mods, mod.name));
+        await deleteEntry(state.paths.mods, mod.name, 'file');
+      }
+      await writeFile(state.paths.mods, file.filename, blob);
+      state.updateInfo.delete(mod.base);
+      await loadMods(); render();
+      toast('已更新到 ' + upd.version_number, 'ok');
+    } catch (e) {
+      toast('更新失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  async function updateAll() {
+    if (!state.updateInfo.size) { toast('没有可更新的 Mod'); return; }
+    if (!confirm('将更新 ' + state.updateInfo.size + ' 个 Mod。旧文件会保留为 .disabled。继续？')) return;
+    const mods = [...state.updateInfo.entries()];
+    loading(true, '正在批量更新…');
+    try {
+      let done = 0;
+      for (const [base, upd] of mods) {
+        const file = upd.files.find(f => f.primary) || upd.files[0];
+        if (!file) continue;
+        const blob = await fetch(file.url).then(r => r.blob());
+        for (const m of state.mods.filter(x => x.base === base)) {
+          if (!m.disabled) {
+            await writeFile(state.paths.mods, m.name + '.disabled', await readFile(state.paths.mods, m.name));
+            await deleteEntry(state.paths.mods, m.name, 'file');
+          }
+        }
+        await writeFile(state.paths.mods, file.filename, blob);
+        done++;
+        loading(true, '已更新 ' + done + ' / ' + mods.length + '…');
+      }
+      state.updateInfo.clear();
+      await loadMods(); render();
+      toast('批量更新完成', 'ok');
+    } catch (e) {
+      toast('批量更新失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  // ================= 材质 / 光影 =================
+  async function importZips(e, dir, reload) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    loading(true, '正在导入…');
+    try {
+      for (const f of files) await writeFile(dir, f.name, f);
+      await reload(); render();
+      toast('已导入 ' + files.length + ' 个文件', 'ok');
+    } catch (err) {
+      toast('导入失败：' + err.message, 'err');
+    } finally {
+      loading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function deletePack(name, kind, which) {
+    if (!confirm('确定删除「' + name + '」？此操作不可撤销。')) return;
+    await deleteEntry(state.paths[which], name, kind);
+    if (which === 'resourcepacks') await loadPacks(); else await loadShaders();
+    render();
+    toast('已删除 ' + name);
+  }
+
+  // ================= 存档 =================
+  async function deleteSave(name) {
+    if (!confirm('确定删除存档「' + name + '」？整个世界文件夹都会被删除，无法恢复。\n建议先使用「备份 ZIP」。')) return;
+    await deleteEntry(state.paths.saves, name, 'directory');
+    await loadSaves(); render();
+    toast('已删除存档 ' + name);
+  }
+
+  async function backupSave(name) {
+    loading(true, '正在打包存档…');
+    try {
+      const blob = await zipDirectory(state.paths.saves + '/' + name, name);
+      downloadBlob(blob, name + '-backup.zip');
+      toast('已生成备份：' + name + '-backup.zip', 'ok');
+    } catch (e) {
+      toast('备份失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  // ================= 截图 =================
+  async function deleteShot(name) {
+    if (!confirm('确定删除截图「' + name + '」？')) return;
+    await deleteEntry(state.paths.screenshots, name, 'file');
+    await loadShots(); render();
+    toast('已删除截图');
+  }
+
+  async function viewCrash(name) {
+    loading(true, '正在读取崩溃报告…');
+    try {
+      const blob = await readFile('crash-reports', name);
+      const text = await blob.text();
+      openModal(
+        '<button class="ghost sm close" onclick="document.getElementById(\'modalMask\').classList.remove(\'show\')">关闭</button>' +
+        '<h2>' + esc(name) + '</h2>' +
+        '<p class="sub">只在本机读取，共 ' + text.length + ' 个字符</p>' +
+        '<pre style="white-space:pre-wrap;word-break:break-all;font:12px/1.55 ui-monospace,Menlo,monospace;background:#F7FAFF;border:1px solid #EAF0F8;border-radius:10px;padding:12px;max-height:62vh;overflow:auto">' + esc(text) + '</pre>'
+      );
+    } catch (e) {
+      toast('读取失败：' + e.message, 'err');
+    } finally {
+      loading(false);
+    }
+  }
+
+  // ================= 服务器 =================
+  function favIcon(bytes) {
+    if (!bytes) return '';
+    try {
+      let bin = '';
+      const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+      return 'data:image/png;base64,' + btoa(bin);
+    } catch (e) { return ''; }
+  }
+
+  function serverModal(index) {
+    const editing = index >= 0;
+    const s = editing ? state.servers[index] : { name: '', ip: '' };
+    openModal(
+      '<button class="ghost sm close" onclick="document.getElementById(\'modalMask\').classList.remove(\'show\')">关闭</button>' +
+      '<h2>' + (editing ? '编辑服务器' : '添加服务器') + '</h2>' +
+      '<p class="sub">写入当前实例根目录的 servers.dat。修改后请重启游戏。</p>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<label style="font-size:12px;color:#737373">名称<input id="srvName" type="text" value="' + esc(s.name) + '" style="width:100%;margin-top:5px"></label>' +
+      '<label style="font-size:12px;color:#737373">地址<input id="srvIp" type="text" value="' + esc(s.ip) + '" placeholder="play.example.com:25565" style="width:100%;margin-top:5px"></label>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="ghost" id="srvCancel">取消</button>' +
+      '<button id="srvSave">保存</button></div>'
+    );
+    $('#srvCancel').onclick = closeModal;
+    $('#srvSave').onclick = async () => {
+      const name = $('#srvName').value.trim();
+      const ip = $('#srvIp').value.trim();
+      if (!name || !ip) { toast('名称和地址都不能为空', 'err'); return; }
+      if (editing) state.servers[index] = { ...state.servers[index], name, ip };
+      else state.servers.push({ name, ip, icon: null });
+      try {
+        await saveServers();
+        closeModal(); render();
+        toast('已保存服务器列表', 'ok');
+      } catch (e) { toast('保存失败：' + e.message, 'err'); }
+    };
+  }
+
+  async function deleteServer(index) {
+    const s = state.servers[index];
+    if (!s || !confirm('确定删除服务器「' + (s.name || s.ip) + '」？')) return;
+    state.servers.splice(index, 1);
+    try { await saveServers(); render(); toast('已删除服务器'); }
+    catch (e) { toast('保存失败：' + e.message, 'err'); }
+  }
+
+  async function saveServers() {
+    const data = buildServers(state.servers);
+    if (DEMO) { demoTree.servers = state.servers.slice(); return; }
+    await writeFile('', 'servers.dat', new Blob([data], { type: 'application/octet-stream' }));
+  }
+
+  // ================= Modrinth =================
+  async function modrinth(path) {
+    const res = await fetch('https://api.modrinth.com/v2' + path, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('Modrinth 请求失败：' + res.status);
+    return await res.json();
+  }
+
+  async function modrinthVersions(projectId) {
+    const facets = [];
+    if (state.version) facets.push('game_versions=' + encodeURIComponent(JSON.stringify([state.version])));
+    if (state.loader && (state.modrinthType === 'mod' || !state.modrinthType)) facets.push('loaders=' + encodeURIComponent(JSON.stringify([state.loader])));
+    const qs = facets.length ? '?' + facets.join('&') : '';
+    try {
+      const list = await modrinth('/project/' + projectId + '/version' + qs);
+      if (list && list.length) return list;
+    } catch (e) {}
+    return await modrinth('/project/' + projectId + '/version');
+  }
+
+  async function searchModrinth() {
+    const q = ($('#dlQuery') ? $('#dlQuery').value : state.modrinthQuery).trim();
+    const type = $('#dlType') ? $('#dlType').value : state.modrinthType;
+    state.modrinthQuery = q;
+    state.modrinthType = type;
+    const facets = [['project_type:' + type]];
+    if (state.version) facets.push(['versions:' + state.version]);
+    if (type === 'mod' && state.loader) facets.push(['categories:' + state.loader]);
+    state.searching = true;
+    render();
+    try {
+      const url = '/search?query=' + encodeURIComponent(q) + '&limit=24&index=relevance&facets=' + encodeURIComponent(JSON.stringify(facets));
+      const data = await modrinth(url);
+      state.modrinthResults = data.hits || [];
+    } catch (e) {
+      state.modrinthResults = [];
+      toast('搜索失败：' + e.message, 'err');
+    } finally {
+      state.searching = false;
+      render();
+    }
+  }
+
+  async function openProject(id, title, type) {
+    openModal('<h2>' + esc(title) + '</h2><p class="sub">正在获取版本列表…</p>');
+    try {
+      state.modrinthType = type === 'mod' ? 'mod' : type;
+      const versions = await modrinthVersions(id);
+      const target = type === 'mod' ? state.paths.mods : type === 'resourcepack' ? state.paths.resourcepacks : state.paths.shaderpacks;
+      const label = type === 'mod' ? 'mods' : type === 'resourcepack' ? 'resourcepacks' : 'shaderpacks';
+      openModal(
+        '<button class="ghost sm close" onclick="document.getElementById(\'modalMask\').classList.remove(\'show\')">关闭</button>' +
+        '<h2>' + esc(title) + '</h2>' +
+        '<p class="sub">安装位置：' + esc(target || label) + ' · 共 ' + versions.length + ' 个版本</p>' +
+        '<div class="versions">' + (versions.length ? versions.slice(0, 20).map(v => {
+          const file = v.files.find(f => f.primary) || v.files[0] || {};
+          return '<div class="ver"><div class="v"><b>' + esc(v.version_number) + '</b>' +
+            '<span>' + esc((v.game_versions || []).join(', ')) + (v.loaders && v.loaders.length ? ' · ' + esc(v.loaders.join(', ')) : '') + '</span></div>' +
+            '<button class="sm" data-install="' + esc(file.url || '') + '" data-filename="' + esc(file.filename || '') + '" data-dir="' + esc(target) + '">安装</button></div>';
+        }).join('') : '<div class="empty">没有可用版本</div>') + '</div>' +
+        (type === 'resourcepack' || type === 'shader' ? '<p class="sub" style="margin-top:12px">安装后仍需在游戏内启用对应资源包 / 光影。</p>' : '')
+      );
+      $$('#modalBody [data-install]').forEach(btn => {
+        btn.onclick = async () => {
+          const url = btn.dataset.install;
+          const filename = btn.dataset.filename;
+          const dir = btn.dataset.dir;
+          if (!url) { toast('该版本没有主文件', 'err'); return; }
+          loading(true, '正在下载 ' + filename + '…');
+          try {
+            const blob = await fetch(url).then(r => { if (!r.ok) throw new Error('下载失败 ' + r.status); return r.blob(); });
+            await writeFile(dir, filename, blob);
+            await refreshAll();
+            closeModal();
+            toast('已安装到 ' + dir + '：' + filename, 'ok');
+          } catch (e) { toast('安装失败：' + e.message, 'err'); }
+          finally { loading(false); }
+        };
+      });
+    } catch (e) {
+      openModal('<h2>' + esc(title) + '</h2><p class="sub">获取版本失败：' + esc(e.message) + '</p>');
+    }
+  }
+
+  // ================= NBT（servers.dat / level.dat） =================
+  function parseNbt(buffer) {
+    const dv = new DataView(buffer);
+    let pos = 0;
+    const u8 = () => dv.getUint8(pos++);
+    const i16 = () => { const v = dv.getInt16(pos); pos += 2; return v; };
+    const i32 = () => { const v = dv.getInt32(pos); pos += 4; return v; };
+    const i64 = () => { const v = dv.getBigInt64(pos); pos += 8; return v; };
+    const f32 = () => { const v = dv.getFloat32(pos); pos += 4; return v; };
+    const f64 = () => { const v = dv.getFloat64(pos); pos += 8; return v; };
+    const str = () => {
+      const len = dv.getUint16(pos); pos += 2;
+      const bytes = new Uint8Array(buffer, pos, len); pos += len;
+      return new TextDecoder('utf-8').decode(bytes);
+    };
+    function payload(type) {
+      switch (type) {
+        case 1: return u8() << 24 >> 24;
+        case 2: return i16();
+        case 3: return i32();
+        case 4: return i64();
+        case 5: return f32();
+        case 6: return f64();
+        case 7: { const len = i32(); const b = new Uint8Array(buffer, pos, len); pos += len; return b.slice(); }
+        case 8: return str();
+        case 9: {
+          const elem = u8(); const len = i32(); const arr = [];
+          for (let i = 0; i < len; i++) arr.push(payload(elem));
+          return arr;
+        }
+        case 10: {
+          const obj = {};
+          while (true) {
+            const t = u8(); if (t === 0) break;
+            const name = str(); obj[name] = payload(t);
+          }
+          return obj;
+        }
+        case 11: { const len = i32(); const arr = []; for (let i = 0; i < len; i++) { arr.push(i32()); } return arr; }
+        case 12: { const len = i32(); const arr = []; for (let i = 0; i < len; i++) { arr.push(i64()); } return arr; }
+        default: throw new Error('未知 NBT 类型 ' + type);
+      }
+    }
+    const type = u8();
+    const name = str();
+    return { type, name, value: payload(type) };
+  }
+
+  function nbtToJS(tag) { return tag.value; }
+
+  function parseServers(buffer) {
+    const root = parseNbt(buffer);
+    const servers = (root.value && root.value.servers) || [];
+    return servers.map(s => ({
+      name: s.name || '',
+      ip: s.ip || '',
+      icon: s.icon || null,
+      acceptTextures: s.acceptTextures
+    }));
+  }
+
+  function buildServers(list) {
+    const w = new NbtWriter();
+    w.u8(10); w.str('');
+    w.u8(9); w.str('servers'); w.u8(10); w.i32(list.length);
+    for (const s of list) {
+      w.u8(8); w.str('name'); w.str(s.name || '');
+      w.u8(8); w.str('ip'); w.str(s.ip || '');
+      if (s.icon) { w.u8(7); w.str('icon'); w.i32(s.icon.length); w.bytes(s.icon); }
+      if (s.acceptTextures != null) { w.u8(1); w.str('acceptTextures'); w.u8(s.acceptTextures ? 1 : 0); }
+      w.u8(0);
+    }
+    w.u8(0);
+    return w.out();
+  }
+
+  class NbtWriter {
+    constructor() { this.a = []; }
+    u8(v) { this.a.push(v & 255); }
+    i16(v) { this.a.push((v >> 8) & 255, v & 255); }
+    i32(v) { this.a.push((v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255); }
+    bytes(b) { for (let i = 0; i < b.length; i++) this.a.push(b[i]); }
+    str(s) {
+      const b = new TextEncoder().encode(s);
+      this.i16(b.length); this.bytes(b);
+    }
+    out() { return new Uint8Array(this.a); }
+  }
+
+  // ================= ZIP（仅存储，不压缩） =================
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(data) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  async function zipDirectory(dirPath, baseName) {
+    const entries = [];
+    async function walk(path, prefix) {
+      const list = await listDir(path);
+      for (const item of list) {
+        if (item.kind === 'file') {
+          const blob = await readFile(path, item.name);
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          entries.push({ name: prefix + item.name, data: buf });
+        } else {
+          await walk(path + '/' + item.name, prefix + item.name + '/');
+        }
+      }
+    }
+    await walk(dirPath, '');
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    for (const e of entries) {
+      const nameBytes = new TextEncoder().encode(e.name);
+      const crc = crc32(e.data);
+      const local = new Uint8Array(30 + nameBytes.length);
+      const dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);
+      dv.setUint16(8, 0, true);
+      dv.setUint16(10, 0, true);
+      dv.setUint16(12, 0x21, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, e.data.length, true);
+      dv.setUint32(22, e.data.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      chunks.push(local, e.data);
+      const cen = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(cen.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, e.data.length, true);
+      cv.setUint32(24, e.data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      cen.set(nameBytes, 46);
+      central.push(cen);
+      offset += local.length + e.data.length;
+    }
+    const centralSize = central.reduce((a, b) => a + b.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    return new Blob([...chunks, ...central, eocd], { type: 'application/zip' });
+  }
+
+  // ================= 初始化 =================
+  $('#pickBtn').addEventListener('click', pickRoot);
+  $('#reloadBtn').addEventListener('click', async () => {
+    if (DEMO) { await scanInstances(); return; }
+    if (!state.root) { toast('请先选择 .minecraft 文件夹'); return; }
+    await scanInstances();
+  });
+  $('#instanceSel').addEventListener('change', async e => {
+    const v = e.target.value;
+    if (!v) { state.instance = ''; state.version = ''; state.loader = ''; await resolvePaths(''); await refreshAll(); return; }
+    await useInstance(v);
+  });
+  $('#tabs').addEventListener('click', async e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    state.tab = tab.dataset.tab;
+    render();
+    if (state.tab === 'download' && !state.modrinthResults.length) searchModrinth();
+    if (state.tab === 'tools') { await loadLogs(); render(); }
+  });
+
+  (async function init() {
+    if (DEMO) {
+      toast('演示模式：使用示例数据，不会读写真实文件');
+      await scanInstances();
+      return;
+    }
+    render();
+    const h = await restoreRootHandle();
+    if (h) {
+      state.root = h;
+      await scanInstances();
+      toast('已恢复上次的文件夹：' + h.name, 'ok');
+    }
+  })();
+})();
+</script>
+</body>
+</html>

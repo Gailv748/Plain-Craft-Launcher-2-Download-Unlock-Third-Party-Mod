@@ -277,6 +277,22 @@
       </div>
     </div>
 
+    <div style="margin:0 40px 28px;background:#F0F7FF;border:1px solid #CBE0FB;border-radius:12px;padding:22px 24px;">
+      <h2 style="color:#1e3a8a;font-size:18px;margin-bottom:10px;">MC 实例管理助手（跨平台网页工具）</h2>
+      <p style="color:#475569;font-size:14.5px;line-height:1.85;margin-bottom:10px;">
+        一个独立的单文件网页应用，直接读取你的 <code>.minecraft</code> 目录，集中管理 Mod（启停 / 删除 / 从 Modrinth 检查更新 / 一键更新）、材质包、光影、存档（ZIP 备份）、截图、服务器（直接编辑 <code>servers.dat</code>），并可搜索下载 Mod、材质包与光影，另附日志与崩溃报告查看。
+        所有文件读写都在本机完成，不上传任何内容。
+      </p>
+      <p style="color:#475569;font-size:14.5px;line-height:1.85;margin-bottom:14px;">
+        <strong>关于移植：</strong>PCL2 本体是 Windows 专用的 WPF + .NET Framework 4.8 程序，无法原生移植到 macOS / Linux，也无法用 IL 补丁在版本设置里新增这些页面。
+        因此改用浏览器标准能力（File System Access API）实现：<strong>Windows / macOS / Linux 上的 Chrome 或 Edge 都能直接用</strong>。
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <a href="./mc-manager.html" class="download-btn" style="padding:11px 24px;font-size:15px;">打开实例管理助手</a>
+        <a href="./mc-manager.html?demo=1" class="download-btn" style="padding:11px 24px;font-size:15px;background:linear-gradient(135deg,#0B5BCB,#1370F3);">查看演示（示例数据）</a>
+      </div>
+    </div>
+
     <div class="disclaimer">
       <strong>免责声明：</strong>本网站及所分发的软件为<strong>第三方非官方</strong>二次创作产物，与 Plain Craft Launcher 原作者龙腾猫跃、PCL 官方及 Mojang/Microsoft 均无关联。
       软件仅用于<strong>技术研究与学习交流</strong>，<strong>不进行任何商业获利</strong>，不得用于倒卖或任何违反当地法律法规的行为。

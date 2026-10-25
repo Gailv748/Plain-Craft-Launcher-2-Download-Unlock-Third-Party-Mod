@@ -55,6 +55,27 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 
 > 仅支持 PCL2 **2.99.0.0**。其他版本的方法结构可能不同，补丁器会直接报错而不会写出损坏文件。
 
+## MC 实例管理助手（跨平台网页工具）
+
+官网同一目录下附带一个独立的单文件网页应用 [`mc-manager.html`](mc-manager.html)，用于补足 PCL2 版本设置里没有的管理能力：
+
+| 能力 | 说明 |
+| --- | --- |
+| Mod 管理 | 启用 / 禁用（`.disabled`）、删除、按文件名搜索、全部启停 |
+| 实时检查更新 | 计算本地 jar 的 SHA-1，通过 Modrinth `version_files` 接口匹配项目，再按实例的 MC 版本与加载器筛选新版本；支持单个更新与一键更新（旧文件保留为 `.disabled`） |
+| 材质包 / 光影 | 列表、导入 `.zip`、删除、从 Modrinth 搜索并安装 |
+| 存档 | 列出世界（解析 `level.dat` 的 `LevelName`）、导出 ZIP 备份、删除 |
+| 截图 | 缩略图预览、删除 |
+| 服务器 | 直接读取 / 写入 `servers.dat`（NBT），添加、编辑、删除 |
+| 下载中心 | 按当前实例版本与加载器筛选，搜索并安装 Mod / 材质包 / 光影 |
+| 工具 | 查看 `logs/latest.log` 最后 400 行、复制日志、查看 `crash-reports` 崩溃报告 |
+
+使用方式：打开 <https://newpcl2.netlify.app/mc-manager.html>（或仓库内的 `mc-manager.html`），点击右上角「选择 .minecraft 文件夹」并授权。所有读写都在本机完成，不上传任何文件。也可以用 `?demo=1` 查看示例数据演示。
+
+> **为什么不做进 PCL2 版本设置页**：PCL2 是 Windows 专用的 WPF + .NET Framework 4.8 程序，`PageInstanceLeft.PageGet` 只注册了模组页面，材质包 / 存档 / 截图 / 服务器页面并不存在；新增 WPF 页面需要引入新的 XAML 与代码，无法用 IL 补丁安全实现。
+>
+> **macOS / Linux**：PCL2 本体无法原生移植，Wine 只是兼容层，不随本项目分发。上面这个网页工具基于浏览器标准能力，Windows / macOS / Linux 上的 Chrome、Edge 均可使用，因此这是目前唯一可行的跨平台方案。
+
 ### 数字签名说明（重要）
 
 Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode 签名，并附加了 DigiCert 时间戳。签名信息如下：
