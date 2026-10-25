@@ -272,25 +272,32 @@
         <p><strong>签名者：</strong>PCL2 Third-Party Mod (Non-Official)<br>
         <strong>程序名称：</strong>PCL2解除下载限制版-第三方修改版｜非官方｜仅供学习研究使用｜不进行任何商业获利</p>
         <p class="label">SHA256（签名版）</p>
-        <div class="hash">47b38e5762e5e7ec89010251c93ff87834654834f97fb73677850a889f946d36</div>
+        <div class="hash">ba1707f59ca592632a5297e4c7387b3a22e4c54613a4614c6a93a8af1e21ff55</div>
         <p style="margin-top:12px;font-size:12.5px;color:#64748b;">提示：自签名证书默认不受 Windows 信任，可能提示「未知发布者」，属正常现象。右键文件 → 属性 → 数字签名 可查看完整声明。</p>
       </div>
     </div>
 
     <div style="margin:0 40px 28px;background:#F0F7FF;border:1px solid #CBE0FB;border-radius:12px;padding:22px 24px;">
-      <h2 style="color:#1e3a8a;font-size:18px;margin-bottom:10px;">MC 实例管理助手（跨平台网页工具）</h2>
+      <h2 style="color:#1e3a8a;font-size:18px;margin-bottom:10px;">EXE 内置实例管理中心</h2>
       <p style="color:#475569;font-size:14.5px;line-height:1.85;margin-bottom:10px;">
-        一个独立的单文件网页应用，直接读取你的 <code>.minecraft</code> 目录，集中管理 Mod（启停 / 删除 / 从 Modrinth 检查更新 / 一键更新）、材质包、光影、存档（ZIP 备份）、截图、服务器（直接编辑 <code>servers.dat</code>），并可搜索下载 Mod、材质包与光影，另附日志与崩溃报告查看。
-        所有文件读写都在本机完成，不上传任何内容。
+        本修改版已将管理功能<strong>直接嵌入 EXE 内部</strong>，不再依赖任何外部网页工具。打开 PCL2 → 选择版本 → 版本设置 → 左侧「材质包」（原导出页）即可进入<strong>实例管理中心</strong>，所有操作在 EXE 内完成。
       </p>
-      <p style="color:#475569;font-size:14.5px;line-height:1.85;margin-bottom:14px;">
-        <strong>关于移植：</strong>PCL2 本体是 Windows 专用的 WPF + .NET Framework 4.8 程序，无法原生移植到 macOS / Linux，也无法用 IL 补丁在版本设置里新增这些页面。
-        因此改用浏览器标准能力（File System Access API）实现：<strong>Windows / macOS / Linux 上的 Chrome 或 Edge 都能直接用</strong>。
+      <p style="color:#475569;font-size:14.5px;line-height:1.85;margin-bottom:10px;">
+        管理中心包含 8 个标签页：
       </p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <a href="./mc-manager.html" class="download-btn" style="padding:11px 24px;font-size:15px;">打开实例管理助手</a>
-        <a href="./mc-manager.html?demo=1" class="download-btn" style="padding:11px 24px;font-size:15px;background:linear-gradient(135deg,#0B5BCB,#1370F3);">查看演示（示例数据）</a>
-      </div>
+      <ul style="color:#475569;font-size:14.5px;line-height:1.9;padding-left:22px;margin-bottom:14px;">
+        <li><strong>Mod 管理</strong>：启用 / 禁用（<code>.disabled</code>）、删除、搜索、按 Modrinth SHA-1 检查并一键更新</li>
+        <li><strong>材质包</strong>：列表、导入 <code>.zip</code>、删除、从 Modrinth 搜索安装</li>
+        <li><strong>光影</strong>：列表、导入、删除、从 Modrinth 搜索安装</li>
+        <li><strong>存档</strong>：解析 <code>level.dat</code> 显示世界名、导出 ZIP 备份、删除</li>
+        <li><strong>截图</strong>：缩略图预览、删除</li>
+        <li><strong>服务器</strong>：直接读写 <code>servers.dat</code>（NBT），增删改</li>
+        <li><strong>下载中心</strong>：按当前版本与加载器筛选，搜索安装 Mod / 材质包 / 光影</li>
+        <li><strong>工具</strong>：查看 <code>logs/latest.log</code>、崩溃报告</li>
+      </ul>
+      <p style="color:#475569;font-size:14.5px;line-height:1.85;">
+        实现方式：将独立的 <code>PCL2.Manager.dll</code>（WinForms）作为嵌入资源打包进 EXE，通过 <code>AppDomain.AssemblyResolve</code> 在运行时加载，并将 <code>PageInstanceLeft.PageGet</code> 的导出页分支替换为 <code>ManagerPage</code>。
+      </p>
     </div>
 
     <div class="disclaimer">

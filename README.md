@@ -55,26 +55,22 @@ PCL2 `2.99.0.0` 正式版出于合规原因，通过 `ModSecret.RestrictMcDownlo
 
 > 仅支持 PCL2 **2.99.0.0**。其他版本的方法结构可能不同，补丁器会直接报错而不会写出损坏文件。
 
-## MC 实例管理助手（跨平台网页工具）
+## EXE 内置实例管理中心
 
-官网同一目录下附带一个独立的单文件网页应用 [`mc-manager.html`](mc-manager.html)，用于补足 PCL2 版本设置里没有的管理能力：
+本修改版已将实例管理功能**直接嵌入 EXE 内部**，不再依赖任何外部网页工具。打开 PCL2 → 选择版本 → 版本设置 → 左侧「材质包」（原导出页）即可进入**实例管理中心**，所有操作在 EXE 内完成。
 
 | 能力 | 说明 |
 | --- | --- |
-| Mod 管理 | 启用 / 禁用（`.disabled`）、删除、按文件名搜索、全部启停 |
-| 实时检查更新 | 计算本地 jar 的 SHA-1，通过 Modrinth `version_files` 接口匹配项目，再按实例的 MC 版本与加载器筛选新版本；支持单个更新与一键更新（旧文件保留为 `.disabled`） |
-| 材质包 / 光影 | 列表、导入 `.zip`、删除、从 Modrinth 搜索并安装 |
-| 存档 | 列出世界（解析 `level.dat` 的 `LevelName`）、导出 ZIP 备份、删除 |
+| Mod 管理 | 启用 / 禁用（`.disabled`）、删除、按文件名搜索、按 Modrinth SHA-1 检查并一键更新 |
+| 材质包 | 列表、导入 `.zip`、删除、从 Modrinth 搜索安装 |
+| 光影 | 列表、导入、删除、从 Modrinth 搜索安装 |
+| 存档 | 解析 `level.dat` 显示世界名、导出 ZIP 备份、删除 |
 | 截图 | 缩略图预览、删除 |
-| 服务器 | 直接读取 / 写入 `servers.dat`（NBT），添加、编辑、删除 |
-| 下载中心 | 按当前实例版本与加载器筛选，搜索并安装 Mod / 材质包 / 光影 |
-| 工具 | 查看 `logs/latest.log` 最后 400 行、复制日志、查看 `crash-reports` 崩溃报告 |
+| 服务器 | 直接读写 `servers.dat`（NBT），添加、编辑、删除 |
+| 下载中心 | 按当前版本与加载器筛选，搜索安装 Mod / 材质包 / 光影 |
+| 工具 | 查看 `logs/latest.log` 最后 400 行、查看 `crash-reports` 崩溃报告 |
 
-使用方式：打开 <https://newpcl2.netlify.app/mc-manager.html>（或仓库内的 `mc-manager.html`），点击右上角「选择 .minecraft 文件夹」并授权。所有读写都在本机完成，不上传任何文件。也可以用 `?demo=1` 查看示例数据演示。
-
-> **为什么不做进 PCL2 版本设置页**：PCL2 是 Windows 专用的 WPF + .NET Framework 4.8 程序，`PageInstanceLeft.PageGet` 只注册了模组页面，材质包 / 存档 / 截图 / 服务器页面并不存在；新增 WPF 页面需要引入新的 XAML 与代码，无法用 IL 补丁安全实现。
->
-> **macOS / Linux**：PCL2 本体无法原生移植，Wine 只是兼容层，不随本项目分发。上面这个网页工具基于浏览器标准能力，Windows / macOS / Linux 上的 Chrome、Edge 均可使用，因此这是目前唯一可行的跨平台方案。
+> **实现方式**：将独立的 `PCL2.Manager.dll`（WinForms `UserControl`）作为嵌入资源打包进 EXE，通过在 `FormMain_Loaded` 注册的 `AppDomain.AssemblyResolve` 处理程序在运行时 `Assembly.Load(byte[])` 加载，并把 `PageInstanceLeft.PageGet` 的 `DownloadResourcePack`（原导出页）分支替换为 `new PCL2.Manager.ManagerPage(McFolderSelected, Instance.PathIndie, Instance.Name)`。原导出页功能被管理中心替代。
 
 ### 数字签名说明（重要）
 
@@ -96,7 +92,7 @@ Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode �
 
 | 文件              | 大小           | MD5                                | SHA256                                                             |
 | --------------- | ------------ | ---------------------------------- | ------------------------------------------------------------------ |
-| 签名版（Release 资产） | 5,981,496 字节 | `—` | `47b38e5762e5e7ec89010251c93ff87834654834f97fb73677850a889f946d36` |
+| 签名版（Release 资产） | 6,034,008 字节 | `—` | `ba1707f59ca592632a5297e4c7387b3a22e4c54613a4614c6a93a8af1e21ff55` |
 | 原始 2.99.0.0 正式版 | 5,980,160 字节 | `d6a946a007f8e84a8bfb0e239868f91a` | `6b6e1260cb5a1d6a303855f1c60cab3d0bc1aebba7e40a964180188b271e7386` |
 
 请只从上述官方渠道（蓝奏云 / 项目官网 / 本仓库 Releases）下载，并核对 SHA256。
@@ -108,16 +104,19 @@ Release 中的 exe 已使用**自签名**代码签名证书进行 Authenticode �
 ```bash
 cd patcher
 dotnet build -c Release
+# 不带管理中心（仅五个基础补丁）：
 dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft Launcher 2.exe"
+# 带 EXE 内置管理中心（需提供 PCL2.Manager.dll）：
+dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft Launcher 2.exe" "路径/PCL2.Manager.dll"
 ```
 
 依赖：`dnlib 4.4.0`。
 
 ## 安全性说明
 
-- 自行构建且**未签名**的文件，或本项目的自签名文件，部分杀毒软件可能因“未知/被修改”给出启发式告警，这属于信誉问题，不等于检出病毒；如出现具体报毒名，欢迎提 Issue 附上名称。
-- 补丁只改变上述五个方法的 IL 指令，未新增程序集引用、未新增资源、未添加网络请求。
-- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上述五处。
+- 自行构建且**未签名**的文件，或本项目的自签名文件，部分杀毒软件可能因"未知/被修改"给出启发式告警，这属于信誉问题，不等于检出病毒；如出现具体报毒名，欢迎提 Issue 附上名称。
+- 前五个补丁只改变原有方法的 IL 指令；实例管理中心补丁会**新增一个嵌入资源**（`PCL2.Manager.dll`）、**一个程序集引用**（`PCL2.Manager`）、一个 `AssemblyResolve` 处理方法，并替换 `PageGet` 的导出页分支。
+- 你可以用 dnSpy / ILSpy 对比原始文件与修改后文件，差异应当只有上述几处。
 - 本仓库不包含 PCL2 的完整源代码；PCL2 源代码请前往[原仓库](https://github.com/Meloong-Git/PCL)获取。
 
 ## 许可
@@ -128,6 +127,6 @@ dotnet run -c Release -- "原始/Plain Craft Launcher 2.exe" "输出/Plain Craft
 
 ## English summary
 
-An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies five minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher, and (5) show a mandatory third-party/learning-only/no-profit notice on every startup. All called methods (`DlClientListLoader`, `InstallPack*`, `ModMain.MyMsgBox`, etc.) already exist in the original binary — no new code, resources, or network endpoints are introduced. Supported on 64-bit Windows 7 SP1 / 8 / 8.1 / 10 / 11 with .NET Framework 4.8.
+An **unofficial, third-party modification** of Plain Craft Launcher 2 (PCL2) `2.99.0.0` that restores the built-in Minecraft version download and modpack installation features disabled by the official build. It applies five minimal IL patches with dnlib: (1) restore the version list loader, (2) restore the version card visibility, (3) restore the manual modpack install entry, (4) restore the modpack type dispatcher, and (5) show a mandatory third-party/learning-only/no-profit notice on every startup. Additionally, an **instance management center is embedded inside the EXE**: a `PCL2.Manager.dll` (WinForms) is packaged as an embedded resource and loaded at runtime via `AppDomain.AssemblyResolve`, and the instance-settings export-page branch is replaced with a `ManagerPage` providing Mod / resource-pack / shader / save / screenshot / server management plus Modrinth search-and-download. Supported on 64-bit Windows 7 SP1 / 8 / 8.1 / 10 / 11 with .NET Framework 4.8.
 
 Not affiliated with the original author (龙腾猫跃 / LTCat) or the PCL project. For research and study only. Download the patched executable from [Lanzou Cloud (recommended, access code `2t1q`)](https://wwayr.lanzout.com/iLtnO4czip3i), the project website, or the Releases page, and verify its SHA256.

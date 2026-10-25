@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
@@ -9,14 +10,15 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 2)
+        if (args.Length < 2)
         {
-            Console.WriteLine("usage: patcher <input.exe> <output.exe>");
+            Console.WriteLine("usage: patcher <input.exe> <output.exe> [manager.dll]");
             return 2;
         }
 
         string input = args[0];
         string output = args[1];
+        string? managerDll = args.Length >= 3 ? args[2] : null;
 
         var module = ModuleDefMD.Load(input);
         Console.WriteLine($"Assembly: {module.Assembly.FullName}");
@@ -26,6 +28,15 @@ internal static class Program
         PatchModpackDispatcher(module);
         PatchModpackManualInstall(module);
         PatchStartupNotice(module);
+
+        if (!string.IsNullOrEmpty(managerDll) && File.Exists(managerDll))
+        {
+            PatchInstanceManagerPage(module, managerDll);
+        }
+        else
+        {
+            Console.WriteLine("Skipping instance manager patch (no manager.dll provided)");
+        }
 
         var opts = new ModuleWriterOptions(module);
         opts.Logger = DummyLogger.NoThrowInstance;
@@ -466,6 +477,286 @@ internal static class Program
         body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, noticeMethod));
         body.UpdateInstructionOffsets();
         Console.WriteLine($"Patched {method.FullName} (injected notice check)");
+    }
+
+    // ===================== 实例管理中心（嵌入 PCL2.Manager.dll）=====================
+
+    // 7. 实例管理中心：将 PCL2.Manager.dll 作为嵌入资源写入 EXE，
+    //    注入 AssemblyResolve 运行时加载，并把 PageGet 的 DownloadResourcePack 分支
+    //    替换为返回 PCL2.Manager.ManagerPage（版本设置页内置管理中心）
+    private static void PatchInstanceManagerPage(ModuleDefMD module, string managerDllPath)
+    {
+        byte[] managerBytes = File.ReadAllBytes(managerDllPath);
+        var managerModule = ModuleDefMD.Load(managerBytes);
+        string asmName = managerModule.Assembly.Name.String;
+        var asmVersion = managerModule.Assembly.Version;
+        Console.WriteLine($"Manager assembly: {asmName} v{asmVersion} ({managerBytes.Length} bytes)");
+
+        // 1. 嵌入资源
+        string resName = asmName + ".dll";
+        var existingRes = module.Resources.FirstOrDefault(r => r.Name == resName);
+        if (existingRes != null) module.Resources.Remove(existingRes);
+        module.Resources.Add(new EmbeddedResource(resName, managerBytes, ManifestResourceAttributes.Public));
+
+        // 2. 程序集引用：通过 UpdateRowId 注册到模块的 AssemblyRef 表
+        var asmRef = new AssemblyRefUser(new AssemblyNameInfo(asmName) { Version = asmVersion });
+        module.UpdateRowId(asmRef);
+
+        // 3. ManagerPage 类型与构造函数引用
+        var managerPageType = new TypeRefUser(module, "PCL2.Manager", "ManagerPage", asmRef);
+        var managerCtor = new MemberRefUser(module, ".ctor",
+            MethodSig.CreateInstance(module.CorLibTypes.Void,
+                module.CorLibTypes.String, module.CorLibTypes.String, module.CorLibTypes.String),
+            managerPageType);
+
+        // 4. 注入 AssemblyResolve 处理程序到 ModMain
+        var modMain = module.Find("PCL.ModMain", false)
+                      ?? throw new InvalidOperationException("ModMain not found");
+        var oldHandler = modMain.FindMethod("ResolveManagerAssembly");
+        if (oldHandler != null) modMain.Methods.Remove(oldHandler);
+        var resolveMethod = CreateResolveHandler(module, asmName);
+        modMain.Methods.Add(resolveMethod);
+
+        // 5. 在 FormMain_Loaded 注册 AssemblyResolve
+        RegisterAssemblyResolve(module, resolveMethod);
+
+        // 6. 修改 PageGet
+        PatchPageGetForManager(module, managerCtor);
+
+        Console.WriteLine("Patched instance manager page (embedded + AssemblyResolve + PageGet)");
+    }
+
+    // 构造 ModMain.ResolveManagerAssembly(object, ResolveEventArgs)
+    // 当运行时请求 PCL2.Manager 程序集时，从嵌入资源读取并 Assembly.Load(byte[])
+    private static MethodDef CreateResolveHandler(ModuleDefMD module, string asmName)
+    {
+        var corLib = module.CorLibTypes.AssemblyRef;
+        var assemblyType = new TypeRefUser(module, "System.Reflection", "Assembly", corLib);
+        var streamType = new TypeRefUser(module, "System.IO", "Stream", corLib);
+        var resolveEventArgsType = new TypeRefUser(module, "System", "ResolveEventArgs", corLib);
+        var stringType = new TypeRefUser(module, "System", "String", corLib);
+        var byteType = new TypeRefUser(module, "System", "Byte", corLib);
+        var byteArray = new SZArraySig(byteType.ToTypeSig());
+
+        var getExecutingAssembly = new MemberRefUser(module, "GetExecutingAssembly",
+            MethodSig.CreateStatic(assemblyType.ToTypeSig()), assemblyType);
+        var getManifestResourceStream = new MemberRefUser(module, "GetManifestResourceStream",
+            MethodSig.CreateInstance(streamType.ToTypeSig(), module.CorLibTypes.String), assemblyType);
+        var loadBytes = new MemberRefUser(module, "Load",
+            MethodSig.CreateStatic(assemblyType.ToTypeSig(), byteArray), assemblyType);
+        var streamGetLength = new MemberRefUser(module, "get_Length",
+            MethodSig.CreateInstance(module.CorLibTypes.Int64), streamType);
+        var streamRead = new MemberRefUser(module, "Read",
+            MethodSig.CreateInstance(module.CorLibTypes.Int32, byteArray, module.CorLibTypes.Int32, module.CorLibTypes.Int32),
+            streamType);
+        var getName = new MemberRefUser(module, "get_Name",
+            MethodSig.CreateInstance(module.CorLibTypes.String), resolveEventArgsType);
+        var startsWith = new MemberRefUser(module, "StartsWith",
+            MethodSig.CreateInstance(module.CorLibTypes.Boolean, module.CorLibTypes.String), stringType);
+
+        var method = new MethodDefUser(
+            "ResolveManagerAssembly",
+            MethodSig.CreateStatic(assemblyType.ToTypeSig(), module.CorLibTypes.Object, resolveEventArgsType.ToTypeSig()),
+            MethodImplAttributes.IL | MethodImplAttributes.Managed,
+            MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig)
+        { Body = new CilBody() };
+
+        var body = method.Body;
+        body.MaxStack = 4;
+        var streamLocal = new Local(streamType.ToTypeSig());
+        var bufferLocal = new Local(byteArray);
+        var lenLocal = new Local(module.CorLibTypes.Int32);
+        body.Variables.Add(streamLocal);
+        body.Variables.Add(bufferLocal);
+        body.Variables.Add(lenLocal);
+
+        var retNull = Instruction.Create(OpCodes.Ldnull);
+        var ret = Instruction.Create(OpCodes.Ret);
+
+        // if (args.Name.StartsWith(asmName)) { ... } else return null;
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldarg_1));
+        body.Instructions.Add(Instruction.Create(OpCodes.Callvirt, getName));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldstr, asmName));
+        body.Instructions.Add(Instruction.Create(OpCodes.Callvirt, startsWith));
+        body.Instructions.Add(Instruction.Create(OpCodes.Brfalse_S, retNull));
+
+        // Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(asmName + ".dll");
+        body.Instructions.Add(Instruction.Create(OpCodes.Call, getExecutingAssembly));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldstr, asmName + ".dll"));
+        body.Instructions.Add(Instruction.Create(OpCodes.Callvirt, getManifestResourceStream));
+        body.Instructions.Add(Instruction.Create(OpCodes.Stloc, streamLocal));
+
+        // int len = (int)stream.Length;
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, streamLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Callvirt, streamGetLength));
+        body.Instructions.Add(Instruction.Create(OpCodes.Conv_I4));
+        body.Instructions.Add(Instruction.Create(OpCodes.Stloc, lenLocal));
+
+        // byte[] buffer = new byte[len];
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, lenLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Newarr, byteType));
+        body.Instructions.Add(Instruction.Create(OpCodes.Stloc, bufferLocal));
+
+        // stream.Read(buffer, 0, len);
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, streamLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, bufferLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, lenLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Callvirt, streamRead));
+        body.Instructions.Add(Instruction.Create(OpCodes.Pop));
+
+        // return Assembly.Load(buffer);
+        body.Instructions.Add(Instruction.Create(OpCodes.Ldloc, bufferLocal));
+        body.Instructions.Add(Instruction.Create(OpCodes.Call, loadBytes));
+        body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+
+        body.Instructions.Add(retNull);
+        body.Instructions.Add(ret);
+
+        body.OptimizeBranches();
+        body.UpdateInstructionOffsets();
+        return method;
+    }
+
+    // 在 FormMain_Loaded 开头注册 AppDomain.CurrentDomain.AssemblyResolve += ResolveManagerAssembly
+    private static void RegisterAssemblyResolve(ModuleDefMD module, MethodDef resolveMethod)
+    {
+        var formMain = module.Find("PCL.FormMain", false)
+                       ?? throw new InvalidOperationException("FormMain not found");
+        var loaded = formMain.FindMethod("FormMain_Loaded")
+                     ?? throw new InvalidOperationException("FormMain_Loaded not found");
+
+        var corLib = module.CorLibTypes.AssemblyRef;
+        var appDomainType = new TypeRefUser(module, "System", "AppDomain", corLib);
+        var resolveEventHandlerType = new TypeRefUser(module, "System", "ResolveEventHandler", corLib);
+
+        var currentDomainGet = new MemberRefUser(module, "get_CurrentDomain",
+            MethodSig.CreateStatic(appDomainType.ToTypeSig()), appDomainType);
+        var addAssemblyResolve = new MemberRefUser(module, "add_AssemblyResolve",
+            MethodSig.CreateInstance(module.CorLibTypes.Void, resolveEventHandlerType.ToTypeSig()), appDomainType);
+        var resolveEventHandlerCtor = new MemberRefUser(module, ".ctor",
+            MethodSig.CreateInstance(module.CorLibTypes.Void, module.CorLibTypes.Object, module.CorLibTypes.IntPtr),
+            resolveEventHandlerType);
+
+        var body = loaded.Body;
+        if (body.Instructions.Any(i => i.OpCode == OpCodes.Callvirt &&
+                                       i.Operand is IMethod m && m.Name == "add_AssemblyResolve"))
+        {
+            Console.WriteLine("AssemblyResolve already registered in FormMain_Loaded, skipped");
+            return;
+        }
+
+        var ins = body.Instructions;
+        ins.Insert(0, Instruction.Create(OpCodes.Call, currentDomainGet));
+        ins.Insert(1, Instruction.Create(OpCodes.Ldnull));
+        ins.Insert(2, Instruction.Create(OpCodes.Ldftn, resolveMethod));
+        ins.Insert(3, Instruction.Create(OpCodes.Newobj, resolveEventHandlerCtor));
+        ins.Insert(4, Instruction.Create(OpCodes.Callvirt, addAssemblyResolve));
+
+        body.UpdateInstructionOffsets();
+        Console.WriteLine("Patched FormMain_Loaded (registered AssemblyResolve handler)");
+    }
+
+    // 将 PageInstanceLeft.PageGet 的 DownloadResourcePack 分支替换为 new ManagerPage(...)
+    private static void PatchPageGetForManager(ModuleDefMD module, IMethod managerCtor)
+    {
+        var pageInstanceLeft = module.Find("PCL.PageInstanceLeft", false)
+                               ?? throw new InvalidOperationException("PageInstanceLeft not found");
+        var pageGet = pageInstanceLeft.FindMethod("PageGet")
+                      ?? throw new InvalidOperationException("PageGet not found");
+
+        var ins = pageGet.Body.Instructions;
+
+        // 找到 newobj PageInstanceExport::.ctor
+        int exportCtorIdx = -1;
+        for (int i = 0; i < ins.Count; i++)
+        {
+            if (ins[i].OpCode == OpCodes.Newobj &&
+                ins[i].Operand is IMethod m && m.DeclaringType?.Name == "PageInstanceExport")
+            {
+                exportCtorIdx = i;
+                break;
+            }
+        }
+        if (exportCtorIdx < 0) throw new InvalidOperationException("PageInstanceExport ctor not found in PageGet");
+
+        // 找到 switch 指令
+        int switchIdx = -1;
+        for (int i = 0; i < exportCtorIdx; i++)
+        {
+            if (ins[i].OpCode == OpCodes.Switch) { switchIdx = i; break; }
+        }
+        if (switchIdx < 0) throw new InvalidOperationException("switch not found in PageGet");
+
+        var targets = (Instruction[])ins[switchIdx].Operand;
+
+        // 确定 case 入口（switch 目标中 <= exportCtorIdx 且最接近的）
+        int caseEntryIdx = -1;
+        Instruction? caseEntry = null;
+        foreach (var t in targets)
+        {
+            int idx = ins.IndexOf(t);
+            if (idx >= 0 && idx <= exportCtorIdx && idx > caseEntryIdx)
+            { caseEntryIdx = idx; caseEntry = t; }
+        }
+        // switch 之后的 fall-through 也可能是 default 入口
+        int afterSwitch = switchIdx + 1;
+        if (afterSwitch <= exportCtorIdx && afterSwitch > caseEntryIdx)
+        { caseEntryIdx = afterSwitch; caseEntry = ins[afterSwitch]; }
+        if (caseEntry == null) throw new InvalidOperationException("case entry not found");
+
+        // 确定 case 结束：下一个 switch 目标（case 之间没有独立 ret，统一跳转到末尾的 ldloc.0; ret）
+        int caseEndIdx = ins.Count;
+        foreach (var t in targets)
+        {
+            int idx = ins.IndexOf(t);
+            if (idx > caseEntryIdx && idx < caseEndIdx) caseEndIdx = idx;
+        }
+        if (caseEndIdx <= caseEntryIdx)
+            throw new InvalidOperationException("case end not found for DownloadResourcePack");
+
+        // 获取所需引用
+        var modMinecraft = module.Find("PCL.ModMinecraft", false)
+                           ?? throw new InvalidOperationException("ModMinecraft not found");
+        var mcFolderSelectedGet = modMinecraft.FindMethod("get_McFolderSelected")
+                                  ?? throw new InvalidOperationException("get_McFolderSelected not found");
+        var instanceField = pageInstanceLeft.FindField("Instance")
+                            ?? throw new InvalidOperationException("Instance field not found");
+        var mcInstanceType = module.Find("PCL.ModMinecraft/McInstance", false)
+                             ?? throw new InvalidOperationException("McInstance not found");
+        var pathIndieGet = mcInstanceType.FindMethod("get_PathIndie")
+                           ?? throw new InvalidOperationException("get_PathIndie not found");
+        var nameGet = mcInstanceType.FindMethod("get_Name")
+                      ?? throw new InvalidOperationException("get_Name not found");
+
+        // 构造新指令
+        var newInstructions = new List<Instruction>
+        {
+            Instruction.Create(OpCodes.Call, mcFolderSelectedGet),
+            Instruction.Create(OpCodes.Ldsfld, instanceField),
+            Instruction.Create(OpCodes.Callvirt, pathIndieGet),
+            Instruction.Create(OpCodes.Ldsfld, instanceField),
+            Instruction.Create(OpCodes.Callvirt, nameGet),
+            Instruction.Create(OpCodes.Newobj, managerCtor),
+            Instruction.Create(OpCodes.Ret),
+        };
+
+        // 把 switch 目标重定向到新的首条指令
+        for (int i = 0; i < targets.Length; i++)
+            if (targets[i] == caseEntry) targets[i] = newInstructions[0];
+
+        // 移除旧 case 指令（从后往前删，范围 [caseEntryIdx, caseEndIdx)）
+        for (int i = caseEndIdx - 1; i >= caseEntryIdx; i--) ins.RemoveAt(i);
+
+        // 插入新指令
+        for (int i = 0; i < newInstructions.Count; i++)
+            ins.Insert(caseEntryIdx + i, newInstructions[i]);
+
+        pageGet.Body.OptimizeBranches();
+        pageGet.Body.SimplifyBranches();
+        pageGet.Body.UpdateInstructionOffsets();
+
+        Console.WriteLine($"Patched PageInstanceLeft.PageGet (DownloadResourcePack -> ManagerPage, replaced {caseEndIdx - caseEntryIdx} -> {newInstructions.Count} instructions)");
     }
 
     private const string NoticeTitle = "第三方修改版公告";
